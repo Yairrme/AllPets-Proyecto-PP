@@ -45,7 +45,7 @@ function getEstadoClase(estado: EstadoReserva) {
       <!-- Cabecera del Panel -->
       <div class="p-6 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between bg-stone-50 dark:bg-zinc-900/50">
         <div class="flex items-center gap-2.5">
-          <span class="text-2xl">📋</span>
+          <span class="text-2xl"></span>
           <div>
             <h2 class="text-lg font-extrabold text-stone-900 dark:text-white">Mis Reservas de Paseo</h2>
             <p class="text-xs text-stone-500 dark:text-zinc-400">
@@ -70,7 +70,7 @@ function getEstadoClase(estado: EstadoReserva) {
           class="h-full flex flex-col items-center justify-center text-center p-6 text-stone-400"
         >
           <div class="w-20 h-20 rounded-2xl bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-3xl mb-4 border border-stone-200 dark:border-zinc-700">
-            🐕
+            
           </div>
           <h3 class="text-base font-bold text-stone-700 dark:text-zinc-200 mb-1">Sin reservas registradas</h3>
           <p class="text-xs max-w-xs leading-relaxed text-stone-500 dark:text-zinc-400">
@@ -94,7 +94,7 @@ function getEstadoClase(estado: EstadoReserva) {
               />
               <div>
                 <h4 class="font-bold text-sm text-stone-900 dark:text-white">{{ reserva.paseadorNombre }}</h4>
-                <p class="text-xs text-stone-500 dark:text-zinc-400">📅 {{ reserva.fecha }} • {{ reserva.horaInicio }} hs</p>
+                <p class="text-xs text-stone-500 dark:text-zinc-400"> {{ reserva.fecha }} • {{ reserva.horaInicio }} hs</p>
               </div>
             </div>
             

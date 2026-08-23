@@ -42,10 +42,7 @@ const emit = defineEmits<{
         <span>{{ paseador.zona }}</span>
       </div>
 
-      <!-- Experiencia en el pie derecho -->
-      <div class="absolute bottom-3 right-3 text-xs bg-black/40 backdrop-blur-md text-amber-200 px-2.5 py-0.5 rounded-md border border-amber-400/30">
-        {{ paseador.aniosExperiencia }} años exp.
-      </div>
+    
     </div>
 
     <!-- Contenido de la Tarjeta -->

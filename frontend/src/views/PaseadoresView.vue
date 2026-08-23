@@ -179,11 +179,11 @@ function onReservaCreada(reserva: Reserva) {
                   <h3 class="text-2xl font-black text-stone-900 dark:text-white">{{ perfilPaseador.nombre }}</h3>
                   <span v-if="perfilPaseador.destacado" class="text-amber-500 text-lg" title="Destacado"></span>
                 </div>
-                <p class="text-sm font-semibold text-amber-700 dark:text-amber-400">📍 Zona de cobertura: {{ perfilPaseador.zona }}</p>
+                <p class="text-sm font-semibold text-amber-700 dark:text-amber-400">Zona de cobertura: {{ perfilPaseador.zona }}</p>
                 <div class="flex items-center gap-3 text-xs text-stone-500 dark:text-zinc-400 mt-1">
                   <span>★ <strong class="text-stone-800 dark:text-zinc-200">{{ perfilPaseador.calificacion }}</strong> ({{ perfilPaseador.totalResenas }} reseñas)</span>
                   <span>•</span>
-                  <span>{{ perfilPaseador.aniosExperiencia }} años de experiencia</span>
+
                 </div>
               </div>
             </div>
