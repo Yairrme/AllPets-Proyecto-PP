@@ -1,6 +1,30 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { RouterView, RouterLink, useRouter } from 'vue-router'
+import { useAuthStore } from './stores/auth'
 import logo from './assets/logo.png'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const isWorker = computed(() => {
+  return authStore.user?.role === 'walker' || authStore.user?.role === 'caregiver'
+})
+
+const userRoleBadge = computed(() => {
+  if (authStore.user?.role === 'walker') return 'Paseador'
+  if (authStore.user?.role === 'caregiver') return 'Cuidador'
+  return 'Cliente'
+})
+
+onMounted(() => {
+  authStore.loadUserFromStorage()
+})
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -11,24 +35,28 @@ import logo from './assets/logo.png'
         
         <!-- Logo AllPets -->
         <div class="flex items-center gap-3.5">
-          <router-link to="/paseadores" class="flex items-center gap-3.5 group">
+          <router-link :to="isWorker ? '/mi-panel' : '/paseadores'" class="flex items-center gap-3.5 group">
             <div class="w-12 h-12 rounded-2xl bg-stone-100 dark:bg-zinc-800/60 p-1 flex items-center justify-center border border-stone-200/70 dark:border-zinc-700/60 group-hover:border-amber-500/50 transition-all shadow-xs">
               <img :src="logo" alt="AllPets Logo" class="w-10 h-10 object-contain drop-shadow-xs" />
             </div>
             <div>
               <span class="text-xl font-extrabold tracking-tight text-stone-900 dark:text-white flex items-center gap-2">
                 AllPets
-                <span class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                <span v-if="isWorker" class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+                  Panel {{ userRoleBadge }}
+                </span>
+                <span v-else class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                   Paseadores
                 </span>
               </span>
-              <span class="block text-[11px] text-stone-500 dark:text-zinc-400 font-medium">Cuidado y paseos de confianza</span>
+              <span v-if="isWorker" class="block text-[11px] text-stone-500 dark:text-zinc-400 font-medium">Gestión de tu perfil y servicios</span>
+              <span v-else class="block text-[11px] text-stone-500 dark:text-zinc-400 font-medium">Cuidado y paseos de confianza</span>
             </div>
           </router-link>
         </div>
 
-        <!-- Enlaces de Navegación Minimalistas -->
-        <nav class="hidden md:flex items-center gap-8 font-semibold text-sm">
+        <!-- Enlaces de Navegación Minimalistas (Ocultos para trabajadores) -->
+        <nav v-if="!isWorker" class="hidden md:flex items-center gap-8 font-semibold text-sm">
           <router-link
             to="/paseadores"
             class="text-amber-700 dark:text-amber-400 font-bold border-b-2 border-amber-600 dark:border-amber-400 py-1 transition-colors"
@@ -51,11 +79,29 @@ import logo from './assets/logo.png'
 
         <!-- Perfil / CTA derecho -->
         <div class="flex items-center gap-3">
-          <div class="hidden sm:flex items-center gap-2.5 pl-4 border-l border-stone-200 dark:border-zinc-800">
-            <div class="w-9 h-9 rounded-full bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 flex items-center justify-center text-sm font-bold text-stone-700 dark:text-zinc-200 shadow-2xs">
-              👤
-            </div>
-            <span class="text-xs font-bold text-stone-700 dark:text-zinc-300">Mi Cuenta</span>
+          <div class="hidden sm:flex items-center gap-4 pl-4 border-l border-stone-200 dark:border-zinc-800">
+            <template v-if="authStore.isAuthenticated">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-full bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 flex items-center justify-center text-sm font-bold text-stone-700 dark:text-zinc-200 shadow-2xs">
+                  👤
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-xs font-bold text-stone-700 dark:text-zinc-300">{{ authStore.user?.name || 'Mi Cuenta' }}</span>
+                  <div class="flex gap-2 text-[10px]">
+                    <RouterLink v-if="authStore.user?.role === 'walker' || authStore.user?.role === 'caregiver'" to="/mi-panel" class="text-indigo-600 hover:text-indigo-800 font-medium">Mi Panel</RouterLink>
+                    <button @click="handleLogout" class="text-red-500 hover:text-red-700 text-left">Cerrar sesión</button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <RouterLink to="/login" class="text-sm font-bold text-stone-700 dark:text-zinc-300 hover:text-amber-600 transition-colors">
+                Iniciar Sesión
+              </RouterLink>
+              <RouterLink to="/register" class="text-xs font-bold bg-amber-500 text-white px-3 py-1.5 rounded-lg hover:bg-amber-600 transition-colors">
+                Registrarse
+              </RouterLink>
+            </template>
           </div>
         </div>
 

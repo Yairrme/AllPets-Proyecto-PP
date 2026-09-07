@@ -9,34 +9,40 @@ function seleccionarZona(zona: string) {
 }
 </script>
 
+<script lang="ts">
+export default {
+  name: 'PaseadoresFilter',
+}
+</script>
+
 <template>
-  <div class="bg-white dark:bg-zinc-900 rounded-3xl border border-stone-200 dark:border-zinc-800 shadow-xs p-6 mb-10 transition-all">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-center gap-2.5 text-sm sm:text-base font-extrabold text-stone-800 dark:text-zinc-200">
-        <span class="text-lg"> Zona de Cobertura</span>
+  <section class="wp-filter mb-8">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="wp-label">Ubicación</p>
+        <h2 class="wp-serif mt-0.5 text-lg font-semibold">¿Dónde estás?</h2>
       </div>
 
       <button
         v-if="store.filtros.zona !== ''"
         @click="seleccionarZona('')"
-        class="text-xs font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 transition-all"
+        class="text-left text-xs font-semibold text-[--color-forest] hover:underline"
       >
-        <span>🔄 Mostrar todas las ciudades</span>
+        Ver todas las ciudades
       </button>
     </div>
 
-    <!-- Píldoras de Ciudades / Zonas -->
-    <div class="mt-4 flex items-center gap-2.5 flex-wrap">
+    <div class="mt-3 flex flex-wrap gap-2">
       <button
         @click="seleccionarZona('')"
         :class="[
-          'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-1.5',
+          'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
           store.filtros.zona === ''
-            ? 'bg-amber-600 text-white shadow-xs scale-105'
-            : 'bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 hover:bg-stone-200 dark:hover:bg-zinc-700'
+            ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
+            : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
         ]"
       >
-        <span>Todo</span>
+        Todas las ciudades
       </button>
 
       <button
@@ -44,14 +50,20 @@ function seleccionarZona(zona: string) {
         :key="zona"
         @click="seleccionarZona(zona)"
         :class="[
-          'px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-200 flex items-center gap-1.5',
+          'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
           store.filtros.zona === zona
-            ? 'bg-stone-900 dark:bg-amber-500 text-white shadow-xs scale-105'
-            : 'bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 hover:bg-stone-200 dark:hover:bg-zinc-700'
+            ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
+            : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
         ]"
       >
-        <span>📍 {{ zona }}</span>
+        <span>{{ zona }}</span>
       </button>
     </div>
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.wp-filter { border-bottom: 1px solid var(--color-line); padding-bottom: 1rem; }
+.wp-label { color: rgba(30, 43, 34, 0.5); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.wp-serif { font-family: 'Fraunces', ui-serif, Georgia, serif; }
+</style>

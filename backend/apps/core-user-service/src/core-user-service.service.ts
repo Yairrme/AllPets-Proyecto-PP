@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -19,7 +19,7 @@ export class CoreUserService {
 
   // 1. AUTENTICACIÓN: Registro
   async register(registerDto: RegisterDto): Promise<any> {
-    const { email, password, name, role } = registerDto;
+    const { email, password, name, city, phone, role } = registerDto;
 
     // Verificar si el usuario ya existe
     const existingUser = await this.userModel.findOne({ email }).exec();
@@ -36,6 +36,8 @@ export class CoreUserService {
       name,
       email,
       password_hash,
+      city,
+      phone,
       role,
     });
     const savedUser = await createdUser.save();
@@ -150,6 +152,17 @@ export class CoreUserService {
     const caregiverUser = await this.userModel.findById(caregiver_id).exec();
     if (!caregiverUser || (caregiverUser.role !== UserRole.WALKER && caregiverUser.role !== UserRole.CAREGIVER)) {
       throw new NotFoundException('El usuario calificado no es un paseador o cuidador válido');
+    }
+
+    const reviewerUser = await this.userModel.findById(reviewer_id).exec();
+    if (!reviewerUser) {
+      throw new NotFoundException('El usuario que deja la reseña no existe');
+    }
+    if (reviewerUser.role !== UserRole.CLIENT) {
+      throw new ForbiddenException('Solo los clientes pueden dejar reseñas');
+    }
+    if (reviewer_id === caregiver_id) {
+      throw new ForbiddenException('No puedes dejarte una reseña a ti mismo');
     }
 
     // Guardar reseña

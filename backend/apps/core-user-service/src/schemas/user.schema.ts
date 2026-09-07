@@ -20,6 +20,17 @@ export class User {
   @Prop({
     type: String,
     required: true,
+    enum: ['Cipolletti', 'Neuquén'],
+    default: 'Cipolletti',
+  })
+  city: string;
+
+  @Prop({ required: false, default: null })
+  phone: string;
+
+  @Prop({
+    type: String,
+    required: true,
     enum: UserRole,
     default: UserRole.CLIENT,
   })

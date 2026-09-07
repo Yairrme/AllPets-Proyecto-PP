@@ -22,6 +22,12 @@ export class CaregiverProfile {
 
   @Prop({ type: [String], default: [] })
   availability: string[];
+
+  @Prop({ required: false, default: '' })
+  profile_image: string;
+
+  @Prop({ type: [String], default: [] })
+  gallery_images: string[];
 }
 
 export const CaregiverProfileSchema = SchemaFactory.createForClass(CaregiverProfile);

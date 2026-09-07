@@ -18,15 +18,6 @@
         "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
       }
     },
-    "booking-location-service": {
-      "type": "application",
-      "root": "apps/booking-location-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/booking-location-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/booking-location-service/tsconfig.app.json"
-      }
-    },
     "common": {
       "type": "library",
       "root": "libs/common",

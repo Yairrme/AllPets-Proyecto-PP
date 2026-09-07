@@ -1,12 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import * as express from 'express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Habilitar CORS para que el frontend de Vue.js pueda comunicarse con la API
   app.enableCors();
+
+  // Servir archivos estáticos nativamente con Express
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   // Habilitar la validación global de DTOs en las peticiones HTTP entrantes
   app.useGlobalPipes(new ValidationPipe({
