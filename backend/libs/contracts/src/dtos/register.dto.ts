@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
 
 export class RegisterDto {
@@ -17,17 +25,23 @@ export class RegisterDto {
   password: string;
 
   @IsString()
-  @IsIn(['Cipolletti', 'Neuquén'], { message: 'La ciudad debe ser Cipolletti o Neuquén.' })
+  @IsIn(['Cipolletti', 'Neuquén'], {
+    message: 'La ciudad debe ser Cipolletti o Neuquén.',
+  })
   @IsNotEmpty({ message: 'La ciudad es obligatoria.' })
   city: string;
 
   @ValidateIf((value) => value.role !== UserRole.CLIENT)
   @IsString({ message: 'El teléfono debe ser texto.' })
   @ValidateIf((value) => value.role !== UserRole.CLIENT)
-  @IsNotEmpty({ message: 'El teléfono es obligatorio para paseadores y cuidadores.' })
+  @IsNotEmpty({
+    message: 'El teléfono es obligatorio para paseadores y cuidadores.',
+  })
   phone: string;
 
-  @Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEnum(UserRole, { message: 'El rol especificado no es válido.' })
   @IsNotEmpty({ message: 'El rol es obligatorio.' })
   role: UserRole;

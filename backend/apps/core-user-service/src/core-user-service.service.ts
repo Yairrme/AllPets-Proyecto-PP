@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -14,7 +20,10 @@ import {
   UserRole,
 } from 'y/contracts';
 import { User, UserDocument } from './schemas/user.schema';
-import { CaregiverProfile, CaregiverProfileDocument } from './schemas/caregiver-profile.schema';
+import {
+  CaregiverProfile,
+  CaregiverProfileDocument,
+} from './schemas/caregiver-profile.schema';
 import { Review, ReviewDocument } from './schemas/review.schema';
 import { decryptPhone, encryptPhone } from './security/phone-crypto';
 
@@ -22,8 +31,10 @@ import { decryptPhone, encryptPhone } from './security/phone-crypto';
 export class CoreUserService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    @InjectModel(CaregiverProfile.name) private readonly profileModel: Model<CaregiverProfileDocument>,
-    @InjectModel(Review.name) private readonly reviewModel: Model<ReviewDocument>,
+    @InjectModel(CaregiverProfile.name)
+    private readonly profileModel: Model<CaregiverProfileDocument>,
+    @InjectModel(Review.name)
+    private readonly reviewModel: Model<ReviewDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -71,7 +82,9 @@ export class CoreUserService {
   }
 
   // 2. AUTENTICACIÓN: Login
-  async login(loginDto: LoginDto): Promise<{ access_token: string; user: any }> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ access_token: string; user: any }> {
     const email = loginDto.email.trim().toLowerCase();
     const { password } = loginDto;
 
@@ -88,7 +101,11 @@ export class CoreUserService {
     }
 
     // Generar JWT
-    const payload = { sub: user._id.toString(), email: user.email, role: user.role };
+    const payload = {
+      sub: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    };
     const token = await this.jwtService.signAsync(payload);
 
     return {
@@ -136,9 +153,35 @@ export class CoreUserService {
     };
   }
 
+  async updateUserProfileImage(
+    userId: string,
+    profile_image: string,
+  ): Promise<any> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException('ID de usuario no válido');
+    }
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $set: { profile_image } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    return this.toPublicUser(user);
+  }
+
   async getAllUsers(pagination: PaginationDto): Promise<{
     data: Omit<User, 'password_hash'>[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   }> {
     const { page, limit } = pagination;
     const [users, total] = await Promise.all([
@@ -152,14 +195,19 @@ export class CoreUserService {
     ]);
 
     return {
-      data: await Promise.all(users.map(user => this.toPublicUser(user))),
+      data: await Promise.all(users.map((user) => this.toPublicUser(user))),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
   async getCaregivers(pagination: PaginationDto): Promise<{
     data: Omit<User, 'password_hash' | 'email'>[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   }> {
     const { page, limit } = pagination;
     const caregiverRoles = [UserRole.WALKER, UserRole.CAREGIVER];
@@ -193,25 +241,34 @@ export class CoreUserService {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('ID de usuario no válido');
     }
-    const profile = await this.profileModel.findOne({ user_id: new Types.ObjectId(userId) }).exec();
+    const profile = await this.profileModel
+      .findOne({ user_id: new Types.ObjectId(userId) })
+      .exec();
     if (!profile) {
       throw new NotFoundException('Perfil de cuidador no encontrado');
     }
     return profile;
   }
 
-  async updateCaregiverProfile(userId: string, updateData: UpdateCaregiverProfileDto): Promise<CaregiverProfile> {
+  async updateCaregiverProfile(
+    userId: string,
+    updateData: UpdateCaregiverProfileDto,
+  ): Promise<CaregiverProfile> {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('ID de usuario no válido');
     }
-    const profile = await this.profileModel.findOneAndUpdate(
-      { user_id: new Types.ObjectId(userId) },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).exec();
+    const profile = await this.profileModel
+      .findOneAndUpdate(
+        { user_id: new Types.ObjectId(userId) },
+        { $set: updateData },
+        { new: true, runValidators: true },
+      )
+      .exec();
 
     if (!profile) {
-      throw new NotFoundException('Perfil de cuidador no encontrado para actualizar');
+      throw new NotFoundException(
+        'Perfil de cuidador no encontrado para actualizar',
+      );
     }
     return profile;
   }
@@ -220,14 +277,23 @@ export class CoreUserService {
   async createReview(createReviewDto: CreateReviewDto): Promise<Review> {
     const { reviewer_id, caregiver_id, score, comment } = createReviewDto;
 
-    if (!Types.ObjectId.isValid(reviewer_id) || !Types.ObjectId.isValid(caregiver_id)) {
+    if (
+      !Types.ObjectId.isValid(reviewer_id) ||
+      !Types.ObjectId.isValid(caregiver_id)
+    ) {
       throw new NotFoundException('IDs de usuario o cuidador inválidos');
     }
 
     // Verificar que el cuidador exista y tenga un rol adecuado
     const caregiverUser = await this.userModel.findById(caregiver_id).exec();
-    if (!caregiverUser || (caregiverUser.role !== UserRole.WALKER && caregiverUser.role !== UserRole.CAREGIVER)) {
-      throw new NotFoundException('El usuario calificado no es un paseador o cuidador válido');
+    if (
+      !caregiverUser ||
+      (caregiverUser.role !== UserRole.WALKER &&
+        caregiverUser.role !== UserRole.CAREGIVER)
+    ) {
+      throw new NotFoundException(
+        'El usuario calificado no es un paseador o cuidador válido',
+      );
     }
 
     const reviewerUser = await this.userModel.findById(reviewer_id).exec();
@@ -276,7 +342,12 @@ export class CoreUserService {
     pagination: PaginationDto,
   ): Promise<{
     data: Review[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   }> {
     if (!Types.ObjectId.isValid(caregiverId)) {
       throw new NotFoundException('ID de cuidador no válido');
@@ -304,24 +375,30 @@ export class CoreUserService {
   }
 
   // Función interna para recalcular promedio de estrellas
-  private async updateCaregiverAverageRating(caregiverId: string): Promise<void> {
-    const reviews = await this.reviewModel.find({ caregiver_id: new Types.ObjectId(caregiverId) }).exec();
+  private async updateCaregiverAverageRating(
+    caregiverId: string,
+  ): Promise<void> {
+    const reviews = await this.reviewModel
+      .find({ caregiver_id: new Types.ObjectId(caregiverId) })
+      .exec();
     if (reviews.length === 0) return;
 
     const sum = reviews.reduce((acc, curr) => acc + curr.score, 0);
     const avg = parseFloat((sum / reviews.length).toFixed(2));
 
-    await this.profileModel.updateOne(
-      { user_id: new Types.ObjectId(caregiverId) },
-      { $set: { rating_avg: avg } }
-    ).exec();
+    await this.profileModel
+      .updateOne(
+        { user_id: new Types.ObjectId(caregiverId) },
+        { $set: { rating_avg: avg } },
+      )
+      .exec();
   }
 
   private async toPublicUser(
     user: UserDocument,
   ): Promise<Omit<User, 'password_hash'>> {
     const userResponse = user.toObject();
-    delete (userResponse as any).password_hash;
+    delete userResponse.password_hash;
 
     if (userResponse.phone) {
       const phone = decryptPhone(
@@ -331,10 +408,16 @@ export class CoreUserService {
       userResponse.phone = phone;
 
       if (phone !== user.phone) {
-        await this.userModel.updateOne(
-          { _id: user._id },
-          { $set: { phone: encryptPhone(phone, this.getPhoneEncryptionKey()) } },
-        ).exec();
+        await this.userModel
+          .updateOne(
+            { _id: user._id },
+            {
+              $set: {
+                phone: encryptPhone(phone, this.getPhoneEncryptionKey()),
+              },
+            },
+          )
+          .exec();
       }
     }
 
@@ -351,7 +434,9 @@ export class CoreUserService {
 
     const key = Buffer.from(encodedKey, 'base64');
     if (key.length !== 32) {
-      throw new Error('PHONE_ENCRYPTION_KEY debe ser una clave base64 de 32 bytes.');
+      throw new Error(
+        'PHONE_ENCRYPTION_KEY debe ser una clave base64 de 32 bytes.',
+      );
     }
 
     return key;

@@ -4,11 +4,17 @@ import { User } from './user.schema';
 
 export type CaregiverProfileDocument = CaregiverProfile & Document;
 
-@Schema({ 
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 })
 export class CaregiverProfile {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true,
+    index: true,
+  })
   user_id: Types.ObjectId | User;
 
   @Prop({ required: false, default: '' })
@@ -30,4 +36,5 @@ export class CaregiverProfile {
   gallery_images: string[];
 }
 
-export const CaregiverProfileSchema = SchemaFactory.createForClass(CaregiverProfile);
+export const CaregiverProfileSchema =
+  SchemaFactory.createForClass(CaregiverProfile);

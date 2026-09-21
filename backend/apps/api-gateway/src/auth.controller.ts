@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Inject, HttpStatus, HttpCode, BadRequestException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Inject,
+  HttpStatus,
+  HttpCode,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { RegisterDto, LoginDto } from 'y/contracts';
@@ -20,7 +29,9 @@ export class AuthController {
       );
       return result;
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al registrar el usuario');
+      throw new BadRequestException(
+        error.message || 'Error al registrar el usuario',
+      );
     }
   }
 

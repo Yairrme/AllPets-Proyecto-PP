@@ -5,7 +5,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CoreUserServiceController } from './core-user-service.controller';
 import { CoreUserService } from './core-user-service.service';
 import { User, UserSchema } from './schemas/user.schema';
-import { CaregiverProfile, CaregiverProfileSchema } from './schemas/caregiver-profile.schema';
+import {
+  CaregiverProfile,
+  CaregiverProfileSchema,
+} from './schemas/caregiver-profile.schema';
 import { Review, ReviewSchema } from './schemas/review.schema';
 import { validateEnvironment } from 'y/common';
 
@@ -40,7 +43,8 @@ import { validateEnvironment } from 'y/common';
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRATION') || '7d') as any,
+          expiresIn: (configService.get<string>('JWT_EXPIRATION') ||
+            '7d') as any,
         },
       }),
     }),

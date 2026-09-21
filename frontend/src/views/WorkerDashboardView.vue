@@ -120,6 +120,24 @@ const saveProfile = async () => {
     isSavingProfile.value = false
   }
 }
+const handleProfileImageChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    if (!file) return
+    try {
+      const userId = authStore.user._id || authStore.user.id
+      await profileStore.uploadProfileImage(userId, file)
+      // Actualizamos el authStore también por si acaso se refleja la misma imagen a nivel usuario global
+      if (authStore.user) {
+        authStore.user.profile_image = profileStore.caregiverProfile.profile_image
+      }
+    } catch (error) {
+      console.error("Error al subir foto de perfil", error)
+      alert("Error al subir la foto de perfil")
+    }
+  }
+}
 </script>
 
 <template>
@@ -218,6 +236,11 @@ const saveProfile = async () => {
               <!-- Formulario de Edición -->
               <div v-else class="flex-1 space-y-6 pt-10 md:pt-0">
                 <form @submit.prevent="saveProfile" class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Foto de perfil</label>
+                    <input type="file" accept="image/*" @change="handleProfileImageChange" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                  </div>
+                  
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Biografía</label>
                     <textarea v-model="editFormData.bio" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Cuéntanos sobre ti y tu experiencia..."></textarea>

@@ -4,8 +4,8 @@ import { UserRole } from 'y/contracts';
 
 export type UserDocument = User & Document;
 
-@Schema({ 
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 })
 export class User {
   @Prop({ required: true })
@@ -27,6 +27,9 @@ export class User {
 
   @Prop({ required: false, default: null })
   phone: string;
+
+  @Prop({ required: false, default: null })
+  profile_image: string;
 
   @Prop({
     type: String,

@@ -55,6 +55,23 @@ export const useProfileStore = defineStore('profile', {
       }
     },
     
+    async uploadClientProfileImage(userId: string, file: File) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const response = await axios.post(`${API_URL}/users/${userId}/image`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        return response.data
+      } catch (error: any) {
+        console.error('Error uploading image', error)
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la foto de perfil'))
+      }
+    },
+    
     async uploadGalleryImages(userId: string, files: File[]) {
       try {
         const formData = new FormData()

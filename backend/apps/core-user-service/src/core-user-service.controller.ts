@@ -47,6 +47,16 @@ export class CoreUserServiceController {
     return this.coreUserService.deleteUser(id);
   }
 
+  @MessagePattern({ cmd: 'update_user_profile_image' })
+  async updateUserProfileImage(
+    @Payload() data: { user_id: string; profile_image: string },
+  ) {
+    return this.coreUserService.updateUserProfileImage(
+      data.user_id,
+      data.profile_image,
+    );
+  }
+
   @MessagePattern({ cmd: 'get_all_users' })
   async getAllUsers(@Payload() pagination: PaginationDto) {
     return this.coreUserService.getAllUsers(pagination);
@@ -63,11 +73,13 @@ export class CoreUserServiceController {
   }
 
   @MessagePattern({ cmd: 'update_caregiver_profile' })
-  async updateCaregiverProfile(@Payload() data: {
-    user_id: string;
-    updateData: UpdateCaregiverProfileDto;
-  }) {
-    return this.coreUserService.updateCaregiverProfile(data.user_id, data.updateData);
+  async updateCaregiverProfile(
+    @Payload() data: { user_id: string; updateData: UpdateCaregiverProfileDto },
+  ) {
+    return this.coreUserService.updateCaregiverProfile(
+      data.user_id,
+      data.updateData,
+    );
   }
 
   @MessagePattern({ cmd: 'create_review' })
@@ -76,10 +88,9 @@ export class CoreUserServiceController {
   }
 
   @MessagePattern({ cmd: 'get_reviews_for_caregiver' })
-  async getReviewsForCaregiver(@Payload() data: {
-    caregiver_id: string;
-    pagination: PaginationDto;
-  }) {
+  async getReviewsForCaregiver(
+    @Payload() data: { caregiver_id: string; pagination: PaginationDto },
+  ) {
     return this.coreUserService.getReviewsForCaregiver(
       data.caregiver_id,
       data.pagination,

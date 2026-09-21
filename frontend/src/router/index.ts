@@ -5,6 +5,7 @@ import RegisterView from '../views/RegisterView.vue'
 import RegisterWorkerView from '../views/RegisterWorkerView.vue'
 import WorkerOnboardingView from '../views/WorkerOnboardingView.vue'
 import WorkerDashboardView from '../views/WorkerDashboardView.vue'
+import ClientProfileView from '../views/ClientProfileView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,6 +44,11 @@ const router = createRouter({
       name: 'worker-dashboard',
       component: WorkerDashboardView,
     },
+    {
+      path: '/mi-perfil',
+      name: 'client-profile',
+      component: ClientProfileView,
+    },
   ],
 })
 
@@ -63,6 +69,12 @@ router.beforeEach((to, _from, next) => {
 
   if (to.name === 'onboarding-worker' && (!token || !user || !['walker', 'caregiver'].includes(user.role))) {
     next('/trabaja-con-nosotros')
+    return
+  }
+
+  // Proteger la vista de cliente para que solo accedan usuarios logueados
+  if (to.name === 'client-profile' && (!token || !user)) {
+    next('/login')
     return
   }
 

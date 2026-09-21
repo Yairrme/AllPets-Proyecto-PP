@@ -4,8 +4,8 @@ import { User } from './user.schema';
 
 export type ReviewDocument = Review & Document;
 
-@Schema({ 
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 })
 export class Review {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })

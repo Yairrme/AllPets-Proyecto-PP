@@ -38,7 +38,9 @@ import { PublicCaregiversController } from './public-caregivers.controller';
           transport: Transport.TCP,
           options: {
             host: configService.get<string>('USER_SERVICE_HOST') || '127.0.0.1',
-            port: parseInt(configService.get<string>('USER_SERVICE_PORT') || '3001'),
+            port: parseInt(
+              configService.get<string>('USER_SERVICE_PORT') || '3001',
+            ),
           },
         }),
       },

@@ -1,4 +1,23 @@
-import { Controller, Get, Post, Put, Body, Param, Inject, HttpStatus, HttpCode, BadRequestException, UseInterceptors, UploadedFile, UploadedFiles, UseGuards, Req, ForbiddenException, Query, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Inject,
+  HttpStatus,
+  HttpCode,
+  BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  Req,
+  ForbiddenException,
+  Query,
+  Delete,
+} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -22,7 +41,10 @@ const multerOptions = {
     destination: join(process.cwd(), 'uploads'),
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      cb(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
+      cb(
+        null,
+        `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`,
+      );
     },
   }),
 };
@@ -43,7 +65,9 @@ export class UserController {
         this.userServiceClient.send({ cmd: 'get_user_by_id' }, id),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al obtener usuario');
+      throw new BadRequestException(
+        error.message || 'Error al obtener usuario',
+      );
     }
   }
 
@@ -70,7 +94,9 @@ export class UserController {
         this.userServiceClient.send({ cmd: 'get_all_users' }, pagination),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al obtener usuarios');
+      throw new BadRequestException(
+        error.message || 'Error al obtener usuarios',
+      );
     }
   }
 
@@ -78,10 +104,15 @@ export class UserController {
   async getCaregiverProfile(@Param('userId') userId: string) {
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_caregiver_profile' }, { user_id: userId }),
+        this.userServiceClient.send(
+          { cmd: 'get_caregiver_profile' },
+          { user_id: userId },
+        ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al obtener el perfil del cuidador');
+      throw new BadRequestException(
+        error.message || 'Error al obtener el perfil del cuidador',
+      );
     }
   }
 
@@ -95,10 +126,39 @@ export class UserController {
     this.assertCanManageUser(userId, request);
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'update_caregiver_profile' }, { user_id: userId, updateData }),
+        this.userServiceClient.send(
+          { cmd: 'update_caregiver_profile' },
+          { user_id: userId, updateData },
+        ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al actualizar el perfil del cuidador');
+      throw new BadRequestException(
+        error.message || 'Error al actualizar el perfil del cuidador',
+      );
+    }
+  }
+
+  @Post('users/:userId/image')
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  async uploadUserImage(
+    @Param('userId') userId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!file) throw new BadRequestException('No se ha subido ningún archivo');
+    this.assertCanManageUser(userId, request);
+    const imageUrl = `/uploads/${file.filename}`;
+    try {
+      return await firstValueFrom(
+        this.userServiceClient.send(
+          { cmd: 'update_user_profile_image' },
+          { user_id: userId, profile_image: imageUrl },
+        ),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Error al guardar la imagen de perfil del usuario',
+      );
     }
   }
 
@@ -115,10 +175,15 @@ export class UserController {
     const imageUrl = `/uploads/${file.filename}`;
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'update_caregiver_profile' }, { user_id: userId, updateData: { profile_image: imageUrl } }),
+        this.userServiceClient.send(
+          { cmd: 'update_caregiver_profile' },
+          { user_id: userId, updateData: { profile_image: imageUrl } },
+        ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al guardar la imagen de perfil');
+      throw new BadRequestException(
+        error.message || 'Error al guardar la imagen de perfil',
+      );
     }
   }
 
@@ -130,29 +195,38 @@ export class UserController {
     @UploadedFiles() files: Express.Multer.File[],
     @Req() request: AuthenticatedRequest,
   ) {
-    if (!files || files.length === 0) throw new BadRequestException('No se han subido archivos');
+    if (!files || files.length === 0)
+      throw new BadRequestException('No se han subido archivos');
     this.assertCanManageUser(userId, request);
-    
+
     // Obtener perfil actual para añadir las imágenes, no sobrescribirlas
     let currentProfile: any;
     try {
       currentProfile = await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_caregiver_profile' }, { user_id: userId }),
+        this.userServiceClient.send(
+          { cmd: 'get_caregiver_profile' },
+          { user_id: userId },
+        ),
       );
-    } catch (e) {
+    } catch {
       // Ignorar, si no existe el array estará vacío
     }
 
     const currentGallery = currentProfile?.gallery_images || [];
-    const newImageUrls = files.map(f => `/uploads/${f.filename}`);
+    const newImageUrls = files.map((f) => `/uploads/${f.filename}`);
     const updatedGallery = [...currentGallery, ...newImageUrls];
 
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'update_caregiver_profile' }, { user_id: userId, updateData: { gallery_images: updatedGallery } }),
+        this.userServiceClient.send(
+          { cmd: 'update_caregiver_profile' },
+          { user_id: userId, updateData: { gallery_images: updatedGallery } },
+        ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al guardar imágenes en la galería');
+      throw new BadRequestException(
+        error.message || 'Error al guardar imágenes en la galería',
+      );
     }
   }
 
@@ -171,7 +245,9 @@ export class UserController {
         ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al crear la reseña');
+      throw new BadRequestException(
+        error.message || 'Error al crear la reseña',
+      );
     }
   }
 
@@ -188,7 +264,9 @@ export class UserController {
         ),
       );
     } catch (error) {
-      throw new BadRequestException(error.message || 'Error al obtener reseñas del cuidador');
+      throw new BadRequestException(
+        error.message || 'Error al obtener reseñas del cuidador',
+      );
     }
   }
 
@@ -197,9 +275,7 @@ export class UserController {
     request: AuthenticatedRequest,
   ): void {
     if (request.user.role !== UserRole.ADMIN && request.user.sub !== userId) {
-      throw new ForbiddenException(
-        'Solo puedes modificar tu propio perfil.',
-      );
+      throw new ForbiddenException('Solo puedes modificar tu propio perfil.');
     }
   }
 }

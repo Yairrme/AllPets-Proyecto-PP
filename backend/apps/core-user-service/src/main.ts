@@ -16,12 +16,16 @@ async function bootstrap() {
   );
 
   // Habilitar validaciones de DTO globales
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
   await app.listen();
-  console.log(`[Core User Service] Listening on TCP port ${process.env.PORT_USER_SERVICE_TCP || '3001'}`);
+  console.log(
+    `[Core User Service] Listening on TCP port ${process.env.PORT_USER_SERVICE_TCP || '3001'}`,
+  );
 }
 bootstrap();
