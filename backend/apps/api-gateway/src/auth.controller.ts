@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Inject, HttpStatus, HttpCode, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Inject, HttpStatus, HttpCode, BadRequestException, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { RegisterDto, LoginDto } from 'y/contracts';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -25,6 +26,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async login(@Body() loginDto: LoginDto) {
     try {
       // Enviar credenciales por TCP

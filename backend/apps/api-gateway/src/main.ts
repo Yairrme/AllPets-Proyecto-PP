@@ -11,11 +11,12 @@ async function bootstrap() {
   app.enableCors();
 
   // Servir archivos estáticos nativamente con Express
-  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
   // Habilitar la validación global de DTOs en las peticiones HTTP entrantes
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
+    forbidNonWhitelisted: true,
     transform: true,
   }));
 

@@ -3,6 +3,13 @@ import axios from 'axios'
 
 const API_URL = 'http://localhost:3000'
 
+function getApiErrorMessage(error: any, fallback: string): string {
+  const message = error?.response?.data?.message
+  if (Array.isArray(message)) return message.join(', ')
+  if (typeof message === 'string') return message
+  return fallback
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as any | null,
@@ -23,12 +30,13 @@ export const useAuthStore = defineStore('auth', {
         
         this.token = data.access_token
         this.user = data.user
+        axios.defaults.headers.common.Authorization = `Bearer ${data.access_token}`
         localStorage.setItem('token', data.access_token)
         localStorage.setItem('user', JSON.stringify(data.user))
         
         return data
       } catch (error: any) {
-        throw new Error(error.response?.data?.message || 'Error al iniciar sesión')
+        throw new Error(getApiErrorMessage(error, 'Error al iniciar sesión'))
       }
     },
     async register(name: string, email: string, password: string, city: string, phone: string, role: string) {
@@ -44,12 +52,13 @@ export const useAuthStore = defineStore('auth', {
         
         return response.data
       } catch (error: any) {
-        throw new Error(error.response?.data?.message || 'Error al registrarse')
+        throw new Error(getApiErrorMessage(error, 'Error al registrarse'))
       }
     },
     logout() {
       this.token = null
       this.user = null
+      delete axios.defaults.headers.common.Authorization
       localStorage.removeItem('token')
       localStorage.removeItem('user')
     },

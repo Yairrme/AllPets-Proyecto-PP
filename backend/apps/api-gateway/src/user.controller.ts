@@ -1,15 +1,25 @@
-import { Controller, Get, Post, Put, Body, Param, Inject, HttpStatus, HttpCode, BadRequestException, UseInterceptors, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Inject, HttpStatus, HttpCode, BadRequestException, UseInterceptors, UploadedFile, UploadedFiles, UseGuards, Req, ForbiddenException, Query, Delete } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { CreateReviewDto } from 'y/contracts';
+import {
+  CreateReviewDto,
+  PaginationDto,
+  UpdateCaregiverProfileDto,
+  UserRole,
+} from 'y/contracts';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { mkdirSync } from 'fs';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
+import { Roles } from './auth/roles.decorator';
+import type { AuthenticatedRequest } from './auth/auth.types';
 
 // Configuración de Multer para guardar localmente en 'uploads'
 const multerOptions = {
   storage: diskStorage({
-    destination: './uploads',
+    destination: join(process.cwd(), 'uploads'),
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       cb(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
@@ -17,7 +27,10 @@ const multerOptions = {
   }),
 };
 
+mkdirSync(join(process.cwd(), 'uploads'), { recursive: true });
+
 @Controller()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
   constructor(
     @Inject('USER_SERVICE') private readonly userServiceClient: ClientProxy,
@@ -34,11 +47,27 @@ export class UserController {
     }
   }
 
-  @Get('users')
-  async getAllUsers() {
+  @Delete('users/:id')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async deleteUser(@Param('id') id: string) {
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_all_users' }, {}),
+        this.userServiceClient.send({ cmd: 'delete_user' }, id),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Error al eliminar usuario',
+      );
+    }
+  }
+
+  @Get('users')
+  @Roles(UserRole.ADMIN)
+  async getAllUsers(@Query() pagination: PaginationDto) {
+    try {
+      return await firstValueFrom(
+        this.userServiceClient.send({ cmd: 'get_all_users' }, pagination),
       );
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al obtener usuarios');
@@ -57,10 +86,13 @@ export class UserController {
   }
 
   @Put('users/:userId/caregiver-profile')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
   async updateCaregiverProfile(
     @Param('userId') userId: string,
-    @Body() updateData: any,
+    @Body() updateData: UpdateCaregiverProfileDto,
+    @Req() request: AuthenticatedRequest,
   ) {
+    this.assertCanManageUser(userId, request);
     try {
       return await firstValueFrom(
         this.userServiceClient.send({ cmd: 'update_caregiver_profile' }, { user_id: userId, updateData }),
@@ -71,12 +103,15 @@ export class UserController {
   }
 
   @Post('users/:userId/caregiver-profile/image')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadProfileImage(
     @Param('userId') userId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Req() request: AuthenticatedRequest,
   ) {
     if (!file) throw new BadRequestException('No se ha subido ningún archivo');
+    this.assertCanManageUser(userId, request);
     const imageUrl = `/uploads/${file.filename}`;
     try {
       return await firstValueFrom(
@@ -88,12 +123,15 @@ export class UserController {
   }
 
   @Post('users/:userId/caregiver-profile/gallery')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
   async uploadGalleryImages(
     @Param('userId') userId: string,
     @UploadedFiles() files: Express.Multer.File[],
+    @Req() request: AuthenticatedRequest,
   ) {
     if (!files || files.length === 0) throw new BadRequestException('No se han subido archivos');
+    this.assertCanManageUser(userId, request);
     
     // Obtener perfil actual para añadir las imágenes, no sobrescribirlas
     let currentProfile: any;
@@ -120,10 +158,17 @@ export class UserController {
 
   @Post('reviews')
   @HttpCode(HttpStatus.CREATED)
-  async createReview(@Body() createReviewDto: CreateReviewDto) {
+  @Roles(UserRole.CLIENT)
+  async createReview(
+    @Body() createReviewDto: CreateReviewDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'create_review' }, createReviewDto),
+        this.userServiceClient.send(
+          { cmd: 'create_review' },
+          { ...createReviewDto, reviewer_id: request.user.sub },
+        ),
       );
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al crear la reseña');
@@ -131,13 +176,30 @@ export class UserController {
   }
 
   @Get('reviews/caregiver/:caregiverId')
-  async getReviewsForCaregiver(@Param('caregiverId') caregiverId: string) {
+  async getReviewsForCaregiver(
+    @Param('caregiverId') caregiverId: string,
+    @Query() pagination: PaginationDto,
+  ) {
     try {
       return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_reviews_for_caregiver' }, { caregiver_id: caregiverId }),
+        this.userServiceClient.send(
+          { cmd: 'get_reviews_for_caregiver' },
+          { caregiver_id: caregiverId, pagination },
+        ),
       );
     } catch (error) {
       throw new BadRequestException(error.message || 'Error al obtener reseñas del cuidador');
+    }
+  }
+
+  private assertCanManageUser(
+    userId: string,
+    request: AuthenticatedRequest,
+  ): void {
+    if (request.user.role !== UserRole.ADMIN && request.user.sub !== userId) {
+      throw new ForbiddenException(
+        'Solo puedes modificar tu propio perfil.',
+      );
     }
   }
 }

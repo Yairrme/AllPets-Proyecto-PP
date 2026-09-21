@@ -1,23 +1,36 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CoreUserServiceController } from './core-user-service.controller';
-import { CoreUserServiceService } from './core-user-service.service';
+import { CoreUserService } from './core-user-service.service';
+import { getConnectionToken } from '@nestjs/mongoose';
 
 describe('CoreUserServiceController', () => {
-  let coreUserServiceController: CoreUserServiceController;
+  let controller: CoreUserServiceController;
+  const coreUserService = {};
+  const connection = { readyState: 1 };
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [CoreUserServiceController],
-      providers: [CoreUserServiceService],
+      providers: [
+        {
+          provide: CoreUserService,
+          useValue: coreUserService,
+        },
+        {
+          provide: getConnectionToken(),
+          useValue: connection,
+        },
+      ],
     }).compile();
 
-    coreUserServiceController = app.get<CoreUserServiceController>(CoreUserServiceController);
+    controller = app.get<CoreUserServiceController>(CoreUserServiceController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(coreUserServiceController.getHello()).toBe('Hello World!');
+  it('reports the microservice and database as healthy', () => {
+    expect(controller.healthCheck()).toEqual({
+      status: 'ok',
+      service: 'core-user-service',
+      database: 'connected',
     });
   });
 });
-  |

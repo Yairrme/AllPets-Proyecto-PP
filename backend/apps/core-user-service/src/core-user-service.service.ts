@@ -2,11 +2,21 @@ import { Injectable, NotFoundException, ConflictException, UnauthorizedException
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { RegisterDto, LoginDto, CreateReviewDto, UserRole } from 'y/contracts';
+import { Buffer } from 'node:buffer';
+import {
+  CreateReviewDto,
+  LoginDto,
+  PaginationDto,
+  RegisterDto,
+  UpdateCaregiverProfileDto,
+  UserRole,
+} from 'y/contracts';
 import { User, UserDocument } from './schemas/user.schema';
 import { CaregiverProfile, CaregiverProfileDocument } from './schemas/caregiver-profile.schema';
 import { Review, ReviewDocument } from './schemas/review.schema';
+import { decryptPhone, encryptPhone } from './security/phone-crypto';
 
 @Injectable()
 export class CoreUserService {
@@ -15,11 +25,13 @@ export class CoreUserService {
     @InjectModel(CaregiverProfile.name) private readonly profileModel: Model<CaregiverProfileDocument>,
     @InjectModel(Review.name) private readonly reviewModel: Model<ReviewDocument>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   // 1. AUTENTICACIÓN: Registro
   async register(registerDto: RegisterDto): Promise<any> {
-    const { email, password, name, city, phone, role } = registerDto;
+    const { password, name, city, phone, role } = registerDto;
+    const email = registerDto.email.trim().toLowerCase();
 
     // Verificar si el usuario ya existe
     const existingUser = await this.userModel.findOne({ email }).exec();
@@ -37,7 +49,7 @@ export class CoreUserService {
       email,
       password_hash,
       city,
-      phone,
+      phone: phone ? encryptPhone(phone, this.getPhoneEncryptionKey()) : phone,
       role,
     });
     const savedUser = await createdUser.save();
@@ -55,14 +67,13 @@ export class CoreUserService {
     }
 
     // Retornar usuario sin la contraseña hash
-    const userResponse = savedUser.toObject();
-    delete (userResponse as any).password_hash;
-    return userResponse;
+    return this.toPublicUser(savedUser);
   }
 
   // 2. AUTENTICACIÓN: Login
   async login(loginDto: LoginDto): Promise<{ access_token: string; user: any }> {
-    const { email, password } = loginDto;
+    const email = loginDto.email.trim().toLowerCase();
+    const { password } = loginDto;
 
     // Buscar usuario por email
     const user = await this.userModel.findOne({ email }).exec();
@@ -77,15 +88,12 @@ export class CoreUserService {
     }
 
     // Generar JWT
-    const payload = { sub: user._id, email: user.email, role: user.role };
+    const payload = { sub: user._id.toString(), email: user.email, role: user.role };
     const token = await this.jwtService.signAsync(payload);
-
-    const userResponse = user.toObject();
-    delete (userResponse as any).password_hash;
 
     return {
       access_token: token,
-      user: userResponse,
+      user: await this.toPublicUser(user),
     };
   }
 
@@ -98,18 +106,86 @@ export class CoreUserService {
     if (!user) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     }
-    const userResponse = user.toObject();
-    delete (userResponse as any).password_hash;
-    return userResponse;
+    return this.toPublicUser(user);
   }
 
-  async getAllUsers(): Promise<any[]> {
-    const users = await this.userModel.find().exec();
-    return users.map(user => {
-      const u = user.toObject();
-      delete (u as any).password_hash;
-      return u;
-    });
+  async deleteUser(id: string): Promise<{ message: string; user_id: string }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID de usuario no válido');
+    }
+
+    const userId = new Types.ObjectId(id);
+    const user = await this.userModel.findById(userId).select('_id').exec();
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    await Promise.all([
+      this.profileModel.deleteOne({ user_id: userId }).exec(),
+      this.reviewModel
+        .deleteMany({
+          $or: [{ reviewer_id: userId }, { caregiver_id: userId }],
+        })
+        .exec(),
+      this.userModel.deleteOne({ _id: userId }).exec(),
+    ]);
+
+    return {
+      message: 'Usuario eliminado correctamente.',
+      user_id: id,
+    };
+  }
+
+  async getAllUsers(pagination: PaginationDto): Promise<{
+    data: Omit<User, 'password_hash'>[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const { page, limit } = pagination;
+    const [users, total] = await Promise.all([
+      this.userModel
+        .find()
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.userModel.countDocuments().exec(),
+    ]);
+
+    return {
+      data: await Promise.all(users.map(user => this.toPublicUser(user))),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getCaregivers(pagination: PaginationDto): Promise<{
+    data: Omit<User, 'password_hash' | 'email'>[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const { page, limit } = pagination;
+    const caregiverRoles = [UserRole.WALKER, UserRole.CAREGIVER];
+    const filter = { role: { $in: caregiverRoles } };
+    const [users, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    const publicUsers = await Promise.all(
+      users.map(async (user) => {
+        const publicUser = await this.toPublicUser(user);
+        const { email: _email, ...safeUser } = publicUser;
+        return safeUser;
+      }),
+    );
+
+    return {
+      data: publicUsers,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   // 4. PERFILES DE CUIDADORES / PASEADORES
@@ -124,7 +200,7 @@ export class CoreUserService {
     return profile;
   }
 
-  async updateCaregiverProfile(userId: string, updateData: Partial<CaregiverProfile>): Promise<CaregiverProfile> {
+  async updateCaregiverProfile(userId: string, updateData: UpdateCaregiverProfileDto): Promise<CaregiverProfile> {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('ID de usuario no válido');
     }
@@ -172,7 +248,22 @@ export class CoreUserService {
       score,
       comment,
     });
-    const savedReview = await review.save();
+    let savedReview: ReviewDocument;
+    try {
+      savedReview = await review.save();
+    } catch (error: unknown) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 11000
+      ) {
+        throw new ConflictException(
+          'El cliente ya dejó una reseña para este cuidador.',
+        );
+      }
+      throw error;
+    }
 
     // Recalcular el rating_avg del cuidador
     await this.updateCaregiverAverageRating(caregiver_id);
@@ -180,13 +271,36 @@ export class CoreUserService {
     return savedReview;
   }
 
-  async getReviewsForCaregiver(caregiverId: string): Promise<Review[]> {
+  async getReviewsForCaregiver(
+    caregiverId: string,
+    pagination: PaginationDto,
+  ): Promise<{
+    data: Review[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
     if (!Types.ObjectId.isValid(caregiverId)) {
       throw new NotFoundException('ID de cuidador no válido');
     }
-    return this.reviewModel.find({ caregiver_id: new Types.ObjectId(caregiverId) })
-      .populate('reviewer_id', 'name email')
-      .exec();
+    const filter = { caregiver_id: new Types.ObjectId(caregiverId) };
+    const [reviews, total] = await Promise.all([
+      this.reviewModel
+        .find(filter)
+        .populate('reviewer_id', 'name email')
+        .sort({ created_at: -1 })
+        .skip((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+        .exec(),
+      this.reviewModel.countDocuments(filter).exec(),
+    ]);
+
+    return {
+      data: reviews,
+      pagination: {
+        ...pagination,
+        total,
+        totalPages: Math.ceil(total / pagination.limit),
+      },
+    };
   }
 
   // Función interna para recalcular promedio de estrellas
@@ -201,5 +315,45 @@ export class CoreUserService {
       { user_id: new Types.ObjectId(caregiverId) },
       { $set: { rating_avg: avg } }
     ).exec();
+  }
+
+  private async toPublicUser(
+    user: UserDocument,
+  ): Promise<Omit<User, 'password_hash'>> {
+    const userResponse = user.toObject();
+    delete (userResponse as any).password_hash;
+
+    if (userResponse.phone) {
+      const phone = decryptPhone(
+        userResponse.phone,
+        this.getPhoneEncryptionKey(),
+      );
+      userResponse.phone = phone;
+
+      if (phone !== user.phone) {
+        await this.userModel.updateOne(
+          { _id: user._id },
+          { $set: { phone: encryptPhone(phone, this.getPhoneEncryptionKey()) } },
+        ).exec();
+      }
+    }
+
+    return userResponse as Omit<User, 'password_hash'>;
+  }
+
+  private getPhoneEncryptionKey(): Buffer {
+    const encodedKey = this.configService.get<string>('PHONE_ENCRYPTION_KEY');
+    if (!encodedKey) {
+      throw new Error(
+        'PHONE_ENCRYPTION_KEY debe estar configurada para cifrar teléfonos.',
+      );
+    }
+
+    const key = Buffer.from(encodedKey, 'base64');
+    if (key.length !== 32) {
+      throw new Error('PHONE_ENCRYPTION_KEY debe ser una clave base64 de 32 bytes.');
+    }
+
+    return key;
   }
 }

@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import { useAuthStore } from './auth'
-
 const API_URL = 'http://localhost:3000'
+
+function getApiErrorMessage(error: any, fallback: string): string {
+  const message = error?.response?.data?.message
+  if (Array.isArray(message)) return message.join(', ')
+  if (typeof message === 'string') return message
+  return fallback
+}
 
 export const useProfileStore = defineStore('profile', {
   state: () => ({
@@ -12,12 +17,12 @@ export const useProfileStore = defineStore('profile', {
   actions: {
     async fetchCaregiverProfile(userId: string) {
       try {
-        const response = await axios.get(`${API_URL}/users/${userId}/caregiver-profile`)
+        const response = await axios.get(`${API_URL}/caregivers/${userId}/profile`)
         this.caregiverProfile = response.data
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error fetching profile', error)
-        throw error
+        throw new Error(getApiErrorMessage(error, 'No se pudo cargar el perfil'))
       }
     },
     
@@ -28,7 +33,7 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error updating profile', error)
-        throw error
+        throw new Error(getApiErrorMessage(error, 'No se pudo guardar el perfil'))
       }
     },
     
@@ -46,7 +51,7 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error uploading image', error)
-        throw error
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la imagen'))
       }
     },
     
@@ -66,18 +71,20 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error uploading gallery', error)
-        throw error
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la galería'))
       }
     },
     
     async fetchReviews(caregiverId: string) {
       try {
-        const response = await axios.get(`${API_URL}/reviews/caregiver/${caregiverId}`)
-        this.reviews = response.data
+        const response = await axios.get(`${API_URL}/caregivers/${caregiverId}/reviews`)
+        this.reviews = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || []
         return this.reviews
       } catch (error: any) {
         console.error('Error fetching reviews', error)
-        throw error
+        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar las reseñas'))
       }
     },
 
@@ -87,7 +94,7 @@ export const useProfileStore = defineStore('profile', {
         this.reviews.unshift(response.data)
         return response.data
       } catch (error: any) {
-        throw new Error(error.response?.data?.message || 'Error al guardar la reseña')
+        throw new Error(getApiErrorMessage(error, 'Error al guardar la reseña'))
       }
     }
   }

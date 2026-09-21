@@ -5,13 +5,28 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthController } from './auth.controller';
 import { UserController } from './user.controller';
+import { JwtModule } from '@nestjs/jwt';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
+import { validateEnvironment } from 'y/common';
+import { HealthController } from './health.controller';
+import { PublicCaregiversController } from './public-caregivers.controller';
 
 @Module({
   imports: [
     // Variables de entorno para Gateway
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
+    JwtModule.register({}),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 10,
+      },
+    ]),
 
     // Registro de cliente TCP para comunicarse con core-user-service
     ClientsModule.registerAsync([
@@ -29,7 +44,13 @@ import { UserController } from './user.controller';
       },
     ]),
   ],
-  controllers: [AppController, AuthController, UserController],
-  providers: [AppService],
+  controllers: [
+    AppController,
+    AuthController,
+    UserController,
+    HealthController,
+    PublicCaregiversController,
+  ],
+  providers: [AppService, JwtAuthGuard, RolesGuard],
 })
 export class AppModule {}

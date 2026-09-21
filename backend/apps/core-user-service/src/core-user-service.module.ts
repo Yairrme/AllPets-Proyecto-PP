@@ -7,12 +7,14 @@ import { CoreUserService } from './core-user-service.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { CaregiverProfile, CaregiverProfileSchema } from './schemas/caregiver-profile.schema';
 import { Review, ReviewSchema } from './schemas/review.schema';
+import { validateEnvironment } from 'y/common';
 
 @Module({
   imports: [
     // Soporte para variables de entorno (.env)
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
 
     // Conexión principal a la base de datos MongoDB
@@ -20,7 +22,7 @@ import { Review, ReviewSchema } from './schemas/review.schema';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI_USERS') || 'mongodb://localhost:27017/allpets_users',
+        uri: configService.getOrThrow<string>('MONGO_URI_USERS'),
       }),
     }),
 
@@ -36,7 +38,7 @@ import { Review, ReviewSchema } from './schemas/review.schema';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'defaultsecretkey',
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: (configService.get<string>('JWT_EXPIRATION') || '7d') as any,
         },

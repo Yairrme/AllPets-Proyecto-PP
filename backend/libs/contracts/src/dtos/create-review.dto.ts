@@ -2,7 +2,7 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-vali
 
 export class CreateReviewDto {
   @IsString()
-  @IsNotEmpty({ message: 'El ID del evaluador es obligatorio (reviewer_id).' })
+  @IsOptional()
   reviewer_id: string;
 
   @IsString()

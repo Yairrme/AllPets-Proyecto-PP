@@ -50,8 +50,8 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
 
   async function fetchPaseadores() {
     try {
-      const response = await axios.get('http://localhost:3000/users');
-      const users = response.data;
+      const response = await axios.get('http://localhost:3000/caregivers');
+      const users = response.data.data || [];
       
       const paseadoresDisponibles: Paseador[] = [];
 
