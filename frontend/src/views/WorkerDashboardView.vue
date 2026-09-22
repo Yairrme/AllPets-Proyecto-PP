@@ -210,7 +210,7 @@ const handleProfileImageChange = async (e: Event) => {
               <div v-if="!isEditingProfile" class="flex-1 space-y-6 pt-10 md:pt-0">
                 <div>
                   <h4 class="text-lg font-semibold border-b pb-2 mb-3">Biografía y Experiencia</h4>
-                  <p class="text-gray-700 whitespace-pre-line">{{ profileStore.caregiverProfile?.bio || 'No has añadido una biografía todavía.' }}</p>
+                  <p class="text-gray-600 whitespace-pre-line">{{ profileStore.caregiverProfile?.bio || 'No has añadido una biografía todavía.' }}</p>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -237,22 +237,22 @@ const handleProfileImageChange = async (e: Event) => {
               <div v-else class="flex-1 space-y-6 pt-10 md:pt-0">
                 <form @submit.prevent="saveProfile" class="space-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Foto de perfil</label>
+                    <label class="block text-sm font-medium text-gray-900 mb-1">Foto de perfil</label>
                     <input type="file" accept="image/*" @change="handleProfileImageChange" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                   </div>
                   
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Biografía</label>
+                    <label class="block text-sm font-medium text-gray-900 mb-1">Biografía</label>
                     <textarea v-model="editFormData.bio" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Cuéntanos sobre ti y tu experiencia..."></textarea>
                   </div>
                   
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Servicios Ofrecidos (separados por coma)</label>
+                    <label class="block text-sm font-medium text-gray-900 mb-1">Servicios Ofrecidos (separados por coma)</label>
                     <input v-model="editFormData.services" type="text" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Ej: Paseos individuales, Guardería, Entrenamiento básico" />
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Disponibilidad (separados por coma)</label>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Disponibilidad (separados por coma)</label>
                     <input v-model="editFormData.availability" type="text" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Ej: Lunes, Martes, Fines de semana" />
                   </div>
 

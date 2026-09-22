@@ -84,6 +84,22 @@ npm run lint
 
 ---
 
+## 📖 Documentación Interactiva con Swagger (OpenAPI)
+
+El API Gateway cuenta con documentación interactiva generada con **Swagger / OpenAPI 3.0**.
+
+- **URL de la Documentación:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+- **Especificación JSON:** `http://localhost:3000/api/docs-json`
+
+### 🔑 Cómo probar endpoints protegidos en Swagger:
+1. Ir al endpoint `POST /auth/login` y presionar **Try it out**.
+2. Ingresar las credenciales de usuario y hacer clic en **Execute**.
+3. Copiar el `access_token` retornado.
+4. Hacer clic en el botón **Authorize 🔓** (arriba a la derecha), pegar el token JWT en el campo y pulsar **Authorize**.
+5. Ahora puedes probar cualquier endpoint protegido (`/users`, `/caregivers`, `/reviews`, subida de imágenes, etc.) directamente desde la interfaz.
+
+---
+
 ## 🛡️ Seguridad Implementada
 - **Bcrypt:** Hasheo unidireccional de contraseñas (salt factor 10). Exclusión garantizada de hashes en respuestas públicas.
 - **AES-256-GCM:** Cifrado criptográfico de datos sensibles (teléfonos de contacto) en reposo (MongoDB).

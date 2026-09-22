@@ -133,9 +133,19 @@ async function handleCreateReview() {
         </p>
       </div>
 
+      <!-- Estado de carga -->
+      <div
+        v-if="store.isLoading"
+        class="wp-card p-14 text-center max-w-lg mx-auto mt-4 animate-pulse"
+      >
+        <div class="w-10 h-10 border-3 border-[--color-forest] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <h3 class="wp-serif text-lg font-semibold mb-1">Cargando paseadores...</h3>
+        <p class="text-sm text-[--color-ink]/60">Consultando paseadores y cuidadores disponibles.</p>
+      </div>
+
       <!-- Grilla -->
       <div
-        v-if="store.paseadoresFiltrados.length > 0"
+        v-else-if="store.paseadoresFiltrados.length > 0"
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         <PaseadorCard
@@ -157,10 +167,10 @@ async function handleCreateReview() {
           <path d="M20 20L16.2 16.2" stroke="#1E2B22" stroke-opacity="0.35" stroke-width="1.6" stroke-linecap="round" />
         </svg>
         <h3 class="wp-serif text-lg font-semibold mb-2">
-          No hay paseadores en esta ciudad
+          No hay paseadores disponibles
         </h3>
         <p class="text-sm text-[--color-ink]/60 mb-7 leading-relaxed">
-          Todavía no tenemos paseadores en la zona seleccionada. Probá con otra ciudad o mirá toda la red disponible.
+          No encontramos paseadores con los filtros seleccionados o registrados en la zona actualmente.
         </p>
         <button
           @click="store.resetFiltros"
@@ -187,6 +197,7 @@ async function handleCreateReview() {
               <img
                 :src="perfilPaseador.foto"
                 :alt="perfilPaseador.nombre"
+                @error="(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' }"
                 class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-[--color-line]"
               />
               <div>

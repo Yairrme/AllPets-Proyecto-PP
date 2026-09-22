@@ -119,7 +119,7 @@ const handleSaveProfile = async () => {
 
         <!-- Servicios Adicionales -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Servicios que ofreces (Selecciona los que apliquen)</label>
+          <label class="block text-sm font-medium text-gray-400 mb-2">Servicios que ofreces (Selecciona los que apliquen)</label>
           <div class="grid grid-cols-2 gap-4">
             <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Paseo') ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
               <input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" :checked="services.includes('Paseo')" @change="toggleService('Paseo')">

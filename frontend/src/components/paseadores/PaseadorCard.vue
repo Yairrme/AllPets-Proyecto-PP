@@ -25,6 +25,7 @@ export default {
       <img
         :src="paseador.foto"
         :alt="paseador.nombre"
+        @error="(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' }"
         class="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
       />
       <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />

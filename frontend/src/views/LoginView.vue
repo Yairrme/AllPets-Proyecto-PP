@@ -87,6 +87,12 @@ const handleLogin = async () => {
             {{ isLoading ? 'Iniciando...' : 'Entrar' }}
           </button>
         </div>
+
+        <div class="text-center pt-2">
+          <RouterLink to="/paseadores" class="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
+            ← Continuar como invitado y ver paseadores
+          </RouterLink>
+        </div>
       </form>
     </div>
   </div>
