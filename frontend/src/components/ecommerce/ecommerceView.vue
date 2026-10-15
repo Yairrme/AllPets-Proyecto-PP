@@ -76,7 +76,7 @@ const cartTotal = computed(() => {
 
 <template>
   <div class="allpets-container">
-    <!-- Navbar / Header según diseño -->
+    <!-- Navbar / Header -->
     <header class="top-header">
       <div class="brand">
         <span class="logo-text">Allpets</span>
@@ -93,7 +93,7 @@ const cartTotal = computed(() => {
       </div>
     </header>
 
-    <!-- Barra de Navegación Naranja -->
+    <!-- Barra de Navegación -->
     <nav class="category-nav">
       <a href="#">Mascotas</a>
       <a href="#">Marcas</a>
@@ -165,7 +165,6 @@ const cartTotal = computed(() => {
 </template>
 
 <style scoped>
-/* Variables de Color Basadas en la Imagen Allpets */
 .allpets-container {
   --orange: #f26522;
   --teal: #5e9ca0;
