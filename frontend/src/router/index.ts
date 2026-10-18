@@ -9,6 +9,17 @@ import ClientProfileView from '../views/ClientProfileView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (to.hash) {
+          resolve({ el: to.hash, behavior: 'smooth' })
+        } else {
+          resolve({ top: 0, behavior: 'smooth' })
+        }
+      }, 300)
+    })
+  },
   routes: [
     {
       path: '/',

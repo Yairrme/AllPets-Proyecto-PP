@@ -18,10 +18,15 @@ export default {
 </script>
 
 <template>
-  <article class="wp-card group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+  <article
+    :class="[
+      'group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg',
+      paseador.rol === 'walker' ? 'wp-card-walker' : 'wp-card',
+    ]"
+  >
 
     <!-- Foto de Perfil + Calificación flotante -->
-    <div class="relative aspect-[4/3] overflow-hidden bg-[--color-line]">
+    <div class="relative h-72 sm:h-80 overflow-hidden bg-[--color-line]">
       <img
         :src="paseador.foto"
         :alt="paseador.nombre"
@@ -29,6 +34,18 @@ export default {
         class="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
       />
       <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+
+      <!-- Etiqueta de Rol (Paseador / Cuidador) -->
+      <div
+        :class="[
+          'absolute left-3 top-3 rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-wider shadow-xs',
+          paseador.rol === 'walker'
+            ? 'bg-[#E17100] text-white'
+            : 'bg-[--color-forest] text-[--color-paper]',
+        ]"
+      >
+        {{ paseador.rol === 'walker' ? '🦮 Paseador' : '🏠 Cuidador' }}
+      </div>
       
       <!-- Calificación -->
       <div
@@ -46,8 +63,6 @@ export default {
         </svg>
         <span>{{ paseador.zona }}</span>
       </div>
-
-    
     </div>
 
     <!-- Contenido de la Tarjeta -->
@@ -55,17 +70,41 @@ export default {
       <div>
         <!-- Nombre y Tarifa -->
         <div class="flex items-start justify-between gap-4 mb-2">
-          <h3 class="wp-serif text-xl font-semibold text-[--color-ink]">
+          <h3
+            :class="[
+              'wp-serif text-xl font-semibold',
+              paseador.rol === 'walker' ? 'text-white' : 'text-[--color-ink]',
+            ]"
+          >
             {{ paseador.nombre }}
           </h3>
           <div class="text-right shrink-0">
-            <span class="wp-serif text-xl font-semibold text-[--color-forest]">${{ paseador.tarifaHora.toLocaleString() }}</span>
-            <span class="block text-xs text-[--color-ink]/50">por hora</span>
+            <span
+              :class="[
+                'wp-serif text-xl font-semibold',
+                paseador.rol === 'walker' ? 'text-white' : 'text-[--color-forest]',
+              ]"
+            >
+              ${{ paseador.tarifaHora.toLocaleString() }}
+            </span>
+            <span
+              :class="[
+                'block text-xs',
+                paseador.rol === 'walker' ? 'text-white/80' : 'text-[--color-ink]/50',
+              ]"
+            >
+              por hora
+            </span>
           </div>
         </div>
 
         <!-- Biografía corta -->
-        <p class="mb-4 line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed text-[--color-ink]/70">
+        <p
+          :class="[
+            'mb-4 line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed',
+            paseador.rol === 'walker' ? 'text-white/95' : 'text-[--color-ink]/70',
+          ]"
+        >
           {{ paseador.biografia }}
         </p>
 
@@ -74,14 +113,17 @@ export default {
           <span
             v-for="(badge, index) in paseador.insignias.slice(0, 3)"
             :key="index"
-            class="wp-tag"
+            :class="paseador.rol === 'walker' ? 'wp-tag-walker' : 'wp-tag'"
           >
-            <span v-if="badge === 'Verificado'" class="font-bold text-[--color-clay]">✓</span>
+            <span
+              v-if="badge === 'Verificado'"
+              :class="paseador.rol === 'walker' ? 'font-bold text-white' : 'font-bold text-[--color-clay]'"
+            >✓</span>
             {{ badge }}
           </span>
           <span
             v-if="paseador.insignias.length > 3"
-            class="wp-tag"
+            :class="paseador.rol === 'walker' ? 'wp-tag-walker' : 'wp-tag'"
           >
             +{{ paseador.insignias.length - 3 }}
           </span>
@@ -89,16 +131,21 @@ export default {
       </div>
 
       <!-- Botones de acción -->
-      <div class="flex gap-2 border-t border-[--color-line] pt-5">
+      <div
+        :class="[
+          'flex gap-2 border-t pt-5',
+          paseador.rol === 'walker' ? 'border-white/25' : 'border-[--color-line]',
+        ]"
+      >
         <button
           @click="emit('ver-perfil', paseador)"
-          class="wp-btn-ghost flex-1"
+          :class="paseador.rol === 'walker' ? 'wp-btn-ghost-walker flex-1' : 'wp-btn-ghost flex-1'"
         >
           Ver Perfil
         </button>
         <button
           @click="emit('contactar', paseador)"
-          class="wp-btn-primary flex-1"
+          :class="paseador.rol === 'walker' ? 'wp-btn-primary-walker flex-1' : 'wp-btn-primary flex-1'"
         >
           <span>Contactar</span>
         </button>
@@ -109,11 +156,17 @@ export default {
 
 <style scoped>
 .wp-card { background: #FFFFFF; border: 1px solid var(--color-line); border-radius: 1.25rem; }
+.wp-card-walker { background: #d67f28; border: 1px solid #C86400; border-radius: 1.25rem; color: #FFFFFF; }
 .wp-serif { font-family: 'Fraunces', ui-serif, Georgia, serif; }
 .wp-tag { border: 1px solid var(--color-line); border-radius: 0.6rem; color: rgba(30, 43, 34, 0.7); font-size: 0.75rem; padding: 0.3rem 0.65rem; }
-.wp-btn-primary, .wp-btn-ghost { align-items: center; border-radius: 0.75rem; display: inline-flex; font-size: 0.85rem; font-weight: 600; justify-content: center; padding: 0.7rem 1rem; }
+.wp-tag-walker { background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 0.6rem; color: #FFFFFF; font-size: 0.75rem; font-weight: 500; padding: 0.3rem 0.65rem; }
+.wp-btn-primary, .wp-btn-ghost, .wp-btn-primary-walker, .wp-btn-ghost-walker { align-items: center; border-radius: 0.75rem; display: inline-flex; font-size: 0.85rem; font-weight: 600; justify-content: center; padding: 0.7rem 1rem; transition: all 0.15s ease; }
 .wp-btn-primary { background: var(--color-forest); color: var(--color-paper); }
 .wp-btn-primary:hover { background: #33473A; }
 .wp-btn-ghost { border: 1px solid var(--color-line); color: var(--color-ink); }
 .wp-btn-ghost:hover { background: #F7F9F7; border-color: rgba(30,43,34,0.3); }
+.wp-btn-primary-walker { background: #FFFFFF; color: #E17100; }
+.wp-btn-primary-walker:hover { background: #FFF5EB; }
+.wp-btn-ghost-walker { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.55); color: #FFFFFF; }
+.wp-btn-ghost-walker:hover { background: rgba(255, 255, 255, 0.24); border-color: #FFFFFF; }
 </style>

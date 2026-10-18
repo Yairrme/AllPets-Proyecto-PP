@@ -71,6 +71,26 @@ export const useProfileStore = defineStore('profile', {
         throw new Error(getApiErrorMessage(error, 'No se pudo subir la foto de perfil'))
       }
     },
+
+    async fetchUserById(userId: string) {
+      try {
+        const response = await axios.get(`${API_URL}/users/${userId}`)
+        return response.data
+      } catch (error: any) {
+        console.error('Error fetching user data', error)
+        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar los datos del usuario'))
+      }
+    },
+
+    async updateClientProfile(userId: string, updateData: { name?: string; email?: string; city?: string; phone?: string }) {
+      try {
+        const response = await axios.put(`${API_URL}/users/${userId}`, updateData)
+        return response.data
+      } catch (error: any) {
+        console.error('Error updating client profile', error)
+        throw new Error(getApiErrorMessage(error, 'No se pudieron guardar los cambios del perfil'))
+      }
+    },
     
     async uploadGalleryImages(userId: string, files: File[]) {
       try {
@@ -89,6 +109,26 @@ export const useProfileStore = defineStore('profile', {
       } catch (error: any) {
         console.error('Error uploading gallery', error)
         throw new Error(getApiErrorMessage(error, 'No se pudo subir la galería'))
+      }
+    },
+
+    async uploadCertificationDocuments(userId: string, files: File[]) {
+      try {
+        const formData = new FormData()
+        for (const file of files) {
+          formData.append('files', file)
+        }
+
+        const response = await axios.post(`${API_URL}/users/${userId}/caregiver-profile/certifications`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        this.caregiverProfile = response.data
+        return this.caregiverProfile
+      } catch (error: any) {
+        console.error('Error uploading certification documents', error)
+        throw new Error(getApiErrorMessage(error, 'No se pudieron subir los comprobantes de certificación'))
       }
     },
     

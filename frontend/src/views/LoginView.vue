@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import loginPetsImg from '../assets/login-pets.jpg'
 
 // router para redirigir después del login
 const router = useRouter()
@@ -40,13 +41,24 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-      <div>
-        <!-- Ajuste de color a text-gray-900 para mejor contraste y legibilidad -->
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-          Iniciar Sesión
-        </h2>
+  <div class="min-h-screen flex flex-col items-center justify-center bg-stone-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl border border-stone-200/80 overflow-hidden">
+      <!-- Imagen de mascotas en la parte superior del card -->
+      <div class="w-full bg-[#f6f6f6] flex justify-center border-b border-stone-100 overflow-hidden select-none">
+        <img
+          :src="loginPetsImg"
+          alt="Mascotas All Pets"
+          class="w-full h-44 sm:h-48 object-cover object-[center_35%] transition-transform hover:scale-105 duration-500"
+        />
+      </div>
+
+      <!-- Contenido del Card Iniciar Sesión -->
+      <div class="p-8 space-y-6">
+        <div>
+          <!-- Ajuste de color a text-stone-900 para mejor contraste y legibilidad -->
+          <h2 class="text-center text-3xl font-extrabold text-stone-900 tracking-tight">
+            Iniciar Sesión
+          </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
           O
           <!-- Enlace de registro resaltado en azul índigo -->
@@ -96,4 +108,5 @@ const handleLogin = async () => {
       </form>
     </div>
   </div>
+</div>
 </template>

@@ -26,8 +26,29 @@ export class CaregiverProfile {
   @Prop({ required: false, default: 0 })
   rating_avg: number;
 
+  @Prop({ required: false, default: 0 })
+  total_reviews: number;
+
+  @Prop({ required: false, default: 4000 })
+  hourly_rate: number;
+
+  @Prop({ required: false, default: 1 })
+  experience_years: number;
+
+  @Prop({
+    type: [String],
+    default: ['pequeño', 'mediano', 'grande'],
+  })
+  accepted_sizes: string[];
+
   @Prop({ type: [String], default: [] })
   availability: string[];
+
+  @Prop({ type: [String], default: [] })
+  certifications: string[];
+
+  @Prop({ type: [String], default: [] })
+  certification_documents: string[];
 
   @Prop({ required: false, default: '' })
   profile_image: string;
@@ -38,3 +59,5 @@ export class CaregiverProfile {
 
 export const CaregiverProfileSchema =
   SchemaFactory.createForClass(CaregiverProfile);
+
+

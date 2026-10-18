@@ -7,6 +7,8 @@ import type { Paseador } from '../types/paseador'
 
 import PaseadorCard from '../components/paseadores/PaseadorCard.vue'
 import PaseadoresFilter from '../components/paseadores/PaseadoresFilter.vue'
+import heroPetsImg from '../assets/hero-pets.jpg'
+import dogLeashImg from '../assets/dog-leash.jpg'
 
 const store = usePaseadoresStore()
 const authStore = useAuthStore()
@@ -19,6 +21,7 @@ onMounted(() => {
 const selectedPaseador = ref<Paseador | null>(null)
 const isPerfilModalOpen = ref(false)
 const perfilPaseador = ref<Paseador | null>(null)
+const selectedGalleryImage = ref<string | null>(null)
 const reviewScore = ref(5)
 const reviewComment = ref('')
 const reviewError = ref('')
@@ -40,6 +43,7 @@ function handleContactar(paseador: Paseador) {
 
 function handleVerPerfil(paseador: Paseador) {
   perfilPaseador.value = paseador
+  selectedGalleryImage.value = null
   isPerfilModalOpen.value = true
   reviewError.value = ''
   reviewSuccess.value = ''
@@ -64,6 +68,11 @@ async function handleCreateReview() {
     reviewComment.value = ''
     reviewScore.value = 5
     reviewSuccess.value = 'Tu reseña fue guardada correctamente.'
+    await store.fetchPaseadores()
+    const updated = store.getPaseadorById(perfilPaseador.value.id)
+    if (updated) {
+      perfilPaseador.value = updated
+    }
   } catch (error: any) {
     reviewError.value = error.message || 'No se pudo guardar la reseña.'
   } finally {
@@ -75,38 +84,51 @@ async function handleCreateReview() {
 <template>
   <div class="min-h-screen bg-white text-[--color-ink] pb-24 wp-root">
 
-    <div class="max-w-6xl mx-auto px-5 sm:px-8 pt-10">
+    <div class="max-w-[1400px] mx-auto px-5 sm:px-8 lg:px-10 pt-10">
 
       <!-- Marca -->
       <div class="flex items-baseline justify-between mb-10">
-        <span class="wp-serif text-xl font-semibold tracking-tight">WalkPets</span>
+        <span class="wp-serif text-2xl font-semibold tracking-tight">WalkPets</span>
         <span class="hidden sm:block text-sm text-[--color-ink]/50">Cipolletti y alrededores</span>
       </div>
 
       <!-- Hero -->
-      <div class="relative pb-12 mb-12 border-b border-[--color-line]">
-        <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-10 items-end">
-          <div class="max-w-xl">
-            <h1 class="wp-serif text-[2.35rem] sm:text-[3.2rem] leading-[1.05] font-semibold mb-5">
-              Encuentra el paseador ideal para tu mascota
-            </h1>
-            <p class="text-[15px] sm:text-base text-[--color-ink]/70 leading-relaxed max-w-md">
-              Paseadores y cuidadores verificados en Cipolletti y Neuquén. Mirá su perfil, consultá la tarifa y contactalos por WhatsApp.
-            </p>
+      <div class="relative pb-14 mb-14 border-b border-[--color-line]">
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-10 lg:gap-14 items-center">
+          <div class="space-y-8">
+            <div class="max-w-xl">
+              <h1 class="wp-serif text-[2.5rem] sm:text-[3.5rem] leading-[1.05] font-semibold mb-5">
+                Encuentra el paseador ideal para tu mascota
+              </h1>
+              <p class="text-base sm:text-lg text-[--color-ink]/70 leading-relaxed max-w-lg">
+                Paseadores y cuidadores verificados en Cipolletti y Neuquén. Mirá su perfil, consultá la tarifa y contactalos por WhatsApp.
+              </p>
+            </div>
+
+            <div class="grid max-w-lg grid-cols-1 gap-3.5 text-sm sm:text-base text-[--color-ink]/75">
+              <div class="flex items-center gap-3.5 border-b border-[--color-line] pb-3.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper] font-semibold">1</span>
+                <span>Elegí tu ciudad y compará perfiles.</span>
+              </div>
+              <div class="flex items-center gap-3.5 border-b border-[--color-line] pb-3.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper] font-semibold">2</span>
+                <span>Revisá experiencia, tarifa y reseñas.</span>
+              </div>
+              <div class="flex items-center gap-3.5">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper] font-semibold">3</span>
+                <span>Contactá directamente al trabajador.</span>
+              </div>
+            </div>
           </div>
 
-          <div class="grid max-w-sm grid-cols-1 gap-3 text-sm text-[--color-ink]/70 lg:justify-self-end">
-            <div class="flex items-center gap-3 border-b border-[--color-line] pb-3">
-              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper]">1</span>
-              <span>Elegí tu ciudad y compará perfiles.</span>
-            </div>
-            <div class="flex items-center gap-3 border-b border-[--color-line] pb-3">
-              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper]">2</span>
-              <span>Revisá experiencia, tarifa y reseñas.</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[--color-forest] text-[--color-paper]">3</span>
-              <span>Contactá directamente al trabajador.</span>
+          <!-- Imagen Hero Ampliada -->
+          <div class="relative mx-auto w-full">
+            <div class="overflow-hidden rounded-3xl border border-[--color-line] shadow-lg h-[340px] sm:h-[430px] lg:h-[490px]">
+              <img
+                :src="heroPetsImg"
+                alt="Perro y gato juntos en AllPets"
+                class="h-full w-full object-cover object-center"
+              />
             </div>
           </div>
         </div>
@@ -123,12 +145,12 @@ async function handleCreateReview() {
       <PaseadoresFilter />
 
       <!-- Cabecera de listado -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-2 mt-10 mb-6">
-        <h2 class="wp-serif text-2xl font-semibold">
-          Paseadores disponibles
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-2 mt-10 mb-8">
+        <h2 class="wp-serif text-2xl sm:text-3xl font-semibold">
+          {{ store.filtros.rol === 'walker' ? 'Paseadores disponibles' : store.filtros.rol === 'caregiver' ? 'Cuidadores disponibles' : 'Paseadores y cuidadores disponibles' }}
           <span class="wp-serif text-lg text-[--color-ink]/40 font-normal">— {{ store.paseadoresFiltrados.length }}</span>
         </h2>
-        <p class="text-xs text-[--color-ink]/50">
+        <p class="text-xs sm:text-sm text-[--color-ink]/50">
           Tarifas por hora, sin sorpresas
         </p>
       </div>
@@ -146,7 +168,7 @@ async function handleCreateReview() {
       <!-- Grilla -->
       <div
         v-else-if="store.paseadoresFiltrados.length > 0"
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
       >
         <PaseadorCard
           v-for="paseador in store.paseadoresFiltrados"
@@ -180,6 +202,109 @@ async function handleCreateReview() {
         </button>
       </div>
 
+      <!-- Sección Cómo Funciona (#beneficios) -->
+      <section id="beneficios" class="mt-20 pt-14 border-t border-[--color-line] scroll-mt-24 space-y-16">
+        <div>
+          <div class="max-w-2xl mb-10">
+            <span class="wp-label">Transparencia y confianza</span>
+            <h2 class="wp-serif text-3xl font-semibold mt-1">
+              ¿Por qué elegir paseadores y cuidadores en AllPets?
+            </h2>
+            <p class="text-sm sm:text-base text-[--color-ink]/70 mt-2">
+              Conectamos dueños de mascotas con paseadores y cuidadores locales en Cipolletti y Neuquén de forma directa, sin comisiones ocultas.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="wp-card p-6">
+              <div class="w-10 h-10 rounded-xl bg-[--color-forest]/10 text-[--color-forest] flex items-center justify-center font-bold mb-4">
+                ✓
+              </div>
+              <h3 class="wp-serif text-lg font-semibold mb-2">Perfiles y Permisos Verificables</h3>
+              <p class="text-sm text-[--color-ink]/70 leading-relaxed">
+                Consulta fotos reales, años de experiencia, certificaciones y comprobantes de permisos municipales antes de contratar.
+              </p>
+            </div>
+
+            <div class="wp-card p-6">
+              <div class="w-10 h-10 rounded-xl bg-[--color-gold]/15 text-[--color-clay] flex items-center justify-center font-bold mb-4">
+                ★
+              </div>
+              <h3 class="wp-serif text-lg font-semibold mb-2">Reseñas de Clientes Reales</h3>
+              <p class="text-sm text-[--color-ink]/70 leading-relaxed">
+                Lee las calificaciones y experiencias de otros vecinos de tu ciudad y deja tu valoración después de cada paseo o estadía.
+              </p>
+            </div>
+
+            <div class="wp-card p-6">
+              <div class="w-10 h-10 rounded-xl bg-[--color-forest]/10 text-[--color-forest] flex items-center justify-center font-bold mb-4">
+                💬
+              </div>
+              <h3 class="wp-serif text-lg font-semibold mb-2">Trato Directo por WhatsApp</h3>
+              <p class="text-sm text-[--color-ink]/70 leading-relaxed">
+                Acuerda horarios, punto de encuentro y cuidados especiales hablando directamente con el paseador o cuidador elegido.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Beneficios de pasear a tus mascotas o dejarlas con cuidadores + Foto -->
+        <div class="pt-12 border-t border-[--color-line] grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-14 items-center">
+          <div class="space-y-6">
+            <div>
+              <span class="wp-label">Bienestar animal</span>
+              <h3 class="wp-serif text-2xl sm:text-3xl font-semibold mt-1">
+                Beneficios de pasear a tus mascotas o dejarlas con cuidadores
+              </h3>
+              <p class="text-sm sm:text-base text-[--color-ink]/70 mt-2 leading-relaxed">
+                Mantener una rutina activa y acompañada mejora la salud física y emocional de tu mascota cuando tenés horarios exigentes o salís de viaje.
+              </p>
+            </div>
+
+            <div class="space-y-4">
+              <div class="flex items-start gap-4 border-b border-[--color-line] pb-4">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E17100]/15 text-[#E17100] font-bold text-sm mt-0.5">🦮</span>
+                <div>
+                  <h4 class="font-semibold text-base text-[--color-ink]">Menos estrés y mejor salud física</h4>
+                  <p class="text-sm text-[--color-ink]/70 mt-0.5 leading-relaxed">
+                    Los paseos diarios canalizan su energía, previenen el sobrepeso, reducen la ansiedad en casa y estimulan su socialización.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-4 border-b border-[--color-line] pb-4">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[--color-forest]/15 text-[--color-forest] font-bold text-sm mt-0.5">🏠</span>
+                <div>
+                  <h4 class="font-semibold text-base text-[--color-ink]">Cuidado en un ambiente hogareño y sin jaulas</h4>
+                  <p class="text-sm text-[--color-ink]/70 mt-0.5 leading-relaxed">
+                    Al dejarlos con un cuidador verificado, reciben atención personalizada, mantienen sus horarios de comida y descansan como en casa.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-4">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[--color-gold]/20 text-[--color-clay] font-bold text-sm mt-0.5">♥</span>
+                <div>
+                  <h4 class="font-semibold text-base text-[--color-ink]">Compañía segura y tranquilidad para vos</h4>
+                  <p class="text-sm text-[--color-ink]/70 mt-0.5 leading-relaxed">
+                    Evitás que pasen largas horas solos y podés recibir fotos o novedades en tiempo real directamente en tu WhatsApp.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Imagen del perro con la correa -->
+          <div class="flex items-center justify-center bg-white rounded-3xl border border-[--color-line] p-4 sm:p-6 overflow-hidden">
+            <img
+              :src="dogLeashImg"
+              alt="Perro sosteniendo su correa listo para pasear"
+              class="w-full max-h-[380px] object-contain"
+            />
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <!-- Modal de perfil -->
@@ -189,21 +314,21 @@ async function handleCreateReview() {
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[--color-ink]/50 backdrop-blur-[2px]"
         @click.self="isPerfilModalOpen = false"
       >
-        <div class="wp-card max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-9 flex flex-col">
+        <div class="wp-card max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 sm:p-10 flex flex-col">
 
           <!-- Encabezado -->
           <div class="flex items-start justify-between gap-4 border-b border-[--color-line] pb-6 mb-6">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-5">
               <img
                 :src="perfilPaseador.foto"
                 :alt="perfilPaseador.nombre"
                 @error="(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' }"
-                class="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover border border-[--color-line]"
+                class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border border-[--color-line] shadow-xs"
               />
               <div>
-                <h3 class="wp-serif text-2xl font-semibold">{{ perfilPaseador.nombre }}</h3>
+                <h3 class="wp-serif text-2xl sm:text-3xl font-semibold">{{ perfilPaseador.nombre }}</h3>
                 <p class="text-sm text-[--color-forest] font-medium mt-0.5">{{ perfilPaseador.zona || 'Cipolletti' }}</p>
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[--color-ink]/55 mt-1.5">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-[--color-ink]/55 mt-1.5">
                   <span class="inline-flex items-center gap-1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#C99A46"><path d="M12 2l2.9 6.26 6.9.6-5.2 4.6 1.6 6.76L12 16.9l-6.2 3.32 1.6-6.76-5.2-4.6 6.9-.6z"/></svg>
                     {{ perfilPaseador.calificacion }}
@@ -211,13 +336,15 @@ async function handleCreateReview() {
                   <span class="text-[--color-ink]/25">·</span>
                   <span>{{ perfilPaseador.totalResenas }} reseñas</span>
                   <span class="text-[--color-ink]/25">·</span>
+                  <span>{{ perfilPaseador.aniosExperiencia }} {{ perfilPaseador.aniosExperiencia === 1 ? 'año' : 'años' }} de exp.</span>
+                  <span class="text-[--color-ink]/25">·</span>
                   <span class="font-medium text-[--color-forest]">{{ perfilPaseador.telefono || 'Teléfono no disponible' }}</span>
                 </div>
               </div>
             </div>
             <button
               @click="isPerfilModalOpen = false"
-              class="w-8 h-8 shrink-0 rounded-lg border border-[--color-line] text-[--color-ink]/50 hover:text-[--color-ink] hover:border-[--color-ink]/30 transition-colors"
+              class="w-9 h-9 shrink-0 rounded-lg border border-[--color-line] text-[--color-ink]/50 hover:text-[--color-ink] hover:border-[--color-ink]/30 transition-colors"
             >
               ✕
             </button>
@@ -226,7 +353,7 @@ async function handleCreateReview() {
           <div class="space-y-7">
             <div>
               <h4 class="wp-label mb-2">Sobre mí</h4>
-              <p class="text-sm text-[--color-ink]/75 leading-relaxed">
+              <p class="text-sm sm:text-base text-[--color-ink]/75 leading-relaxed">
                 {{ perfilPaseador.biografia }}
               </p>
             </div>
@@ -241,11 +368,29 @@ async function handleCreateReview() {
                 </div>
               </div>
               <div>
-                <h4 class="wp-label mb-2">Verificaciones</h4>
+                <h4 class="wp-label mb-2">Certificaciones y Permisos</h4>
                 <div class="flex flex-wrap gap-1.5">
-                  <span v-for="ins in perfilPaseador.insignias" :key="ins" class="wp-tag">
-                    {{ ins }}
+                  <span v-for="ins in perfilPaseador.insignias" :key="ins" class="wp-tag wp-tag-strong">
+                    ✓ {{ ins }}
                   </span>
+                </div>
+                <div
+                  v-if="perfilPaseador.documentosCertificacion && perfilPaseador.documentosCertificacion.length > 0"
+                  class="mt-3"
+                >
+                  <p class="text-[11px] font-medium text-[--color-ink]/60 mb-1.5">Comprobantes adjuntos:</p>
+                  <div class="flex flex-wrap gap-2.5">
+                    <button
+                      v-for="(docUrl, idx) in perfilPaseador.documentosCertificacion"
+                      :key="idx"
+                      type="button"
+                      @click="selectedGalleryImage = docUrl"
+                      class="w-20 h-20 rounded-xl overflow-hidden border border-[--color-line] hover:border-[--color-forest] transition-colors"
+                      :title="`Ver comprobante ${idx + 1}`"
+                    >
+                      <img :src="docUrl" :alt="`Certificado ${idx + 1}`" class="w-full h-full object-cover" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -262,10 +407,55 @@ async function handleCreateReview() {
               <div>
                 <h4 class="wp-label mb-2">Tamaños aceptados</h4>
                 <div class="flex flex-wrap gap-1.5">
-                  <span v-for="tam in perfilPaseador.tamanosAceptados" :key="tam" class="wp-tag wp-tag-strong">
+                  <span v-for="tam in perfilPaseador.tamanosAceptados" :key="tam" class="wp-tag wp-tag-strong capitalize">
                     {{ tam }}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            <!-- Galería de Fotos -->
+            <div class="border-t border-[--color-line] pt-6">
+              <h4 class="wp-label mb-3">Galería de fotos</h4>
+              <div
+                v-if="perfilPaseador.galeriaFotos && perfilPaseador.galeriaFotos.length > 0"
+                class="grid grid-cols-2 sm:grid-cols-3 gap-4"
+              >
+                <button
+                  v-for="(fotoUrl, idx) in perfilPaseador.galeriaFotos"
+                  :key="idx"
+                  type="button"
+                  @click="selectedGalleryImage = fotoUrl"
+                  class="aspect-[4/3] rounded-xl overflow-hidden border border-[--color-line] group relative focus:outline-none shadow-2xs"
+                >
+                  <img
+                    :src="fotoUrl"
+                    :alt="`Foto ${idx + 1} de ${perfilPaseador.nombre}`"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </button>
+              </div>
+              <p v-else class="text-sm text-[--color-ink]/55">
+                Este trabajador todavía no ha subido fotos a su galería.
+              </p>
+
+              <!-- Vista ampliada de foto seleccionada -->
+              <div
+                v-if="selectedGalleryImage"
+                class="mt-4 relative rounded-2xl overflow-hidden border border-[--color-line] bg-black/5"
+              >
+                <img
+                  :src="selectedGalleryImage"
+                  alt="Foto ampliada"
+                  class="max-h-[500px] w-full object-contain bg-stone-950/90"
+                />
+                <button
+                  type="button"
+                  @click="selectedGalleryImage = null"
+                  class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 text-[--color-ink] text-xs font-bold shadow hover:bg-white"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 

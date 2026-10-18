@@ -2,10 +2,16 @@ export type TamanoMascota = 'pequeño' | 'mediano' | 'grande'
 
 export type BloqueHorario = 'mañana' | 'tarde' | 'noche'
 
+export type RolTrabajador = 'walker' | 'caregiver'
+
 export interface Paseador {
   id: string
   nombre: string
+  rol: RolTrabajador
   foto: string
+  galeriaFotos: string[]
+  certificaciones: string[]
+  documentosCertificacion: string[]
   calificacion: number
   totalResenas: number
   tarifaHora: number
@@ -24,6 +30,7 @@ export interface Paseador {
 export interface FiltrosPaseador {
   busqueda: string
   zona: string
+  rol: RolTrabajador | ''
   tarifaMaxima: number
   calificacionMinima: number
   tamanoMascota: TamanoMascota | ''

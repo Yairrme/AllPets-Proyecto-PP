@@ -24,6 +24,7 @@ import {
   CreateReviewDto,
   PaginationDto,
   UpdateCaregiverProfileDto,
+  UpdateUserDto,
   UserRole,
 } from 'y/contracts';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -82,6 +83,31 @@ export class UserController {
     } catch (error) {
       throw new BadRequestException(
         error.message || 'Error al obtener usuario',
+      );
+    }
+  }
+
+  @Put('users/:id')
+  @ApiOperation({ summary: 'Actualizar datos personales del usuario (nombre, email, ciudad, teléfono)' })
+  @ApiParam({ name: 'id', description: 'ID del usuario a actualizar' })
+  @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
+  @ApiResponse({ status: 403, description: 'Solo puedes modificar tu propio perfil' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body() updateData: UpdateUserDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    this.assertCanManageUser(id, request);
+    try {
+      return await firstValueFrom(
+        this.userServiceClient.send(
+          { cmd: 'update_user' },
+          { user_id: id, updateData },
+        ),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Error al actualizar los datos del usuario',
       );
     }
   }
@@ -306,6 +332,75 @@ export class UserController {
     } catch (error) {
       throw new BadRequestException(
         error.message || 'Error al guardar imágenes en la galería',
+      );
+    }
+  }
+
+  @Post('users/:userId/caregiver-profile/certifications')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Subir comprobantes de certificaciones o permisos municipales (hasta 10 archivos)',
+  })
+  @ApiParam({ name: 'userId', description: 'ID del cuidador' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+          description: 'Fotos o comprobantes de certificaciones/permisos municipales',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Comprobantes de certificación agregados al perfil',
+  })
+  @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
+  async uploadCertificationDocuments(
+    @Param('userId') userId: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!files || files.length === 0)
+      throw new BadRequestException('No se han subido archivos');
+    this.assertCanManageUser(userId, request);
+
+    let currentProfile: any;
+    try {
+      currentProfile = await firstValueFrom(
+        this.userServiceClient.send(
+          { cmd: 'get_caregiver_profile' },
+          { user_id: userId },
+        ),
+      );
+    } catch {
+      // Ignorar si no existe aún
+    }
+
+    const currentDocs = currentProfile?.certification_documents || [];
+    const newDocUrls = files.map((f) => `/uploads/${f.filename}`);
+    const updatedDocs = [...currentDocs, ...newDocUrls];
+
+    try {
+      return await firstValueFrom(
+        this.userServiceClient.send(
+          { cmd: 'update_caregiver_profile' },
+          {
+            user_id: userId,
+            updateData: { certification_documents: updatedDocs },
+          },
+        ),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error.message || 'Error al guardar comprobantes de certificación',
       );
     }
   }

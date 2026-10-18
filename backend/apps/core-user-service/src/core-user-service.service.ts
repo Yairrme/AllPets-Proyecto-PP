@@ -17,6 +17,7 @@ import {
   PaginationDto,
   RegisterDto,
   UpdateCaregiverProfileDto,
+  UpdateUserDto,
   UserRole,
 } from 'y/contracts';
 import { User, UserDocument } from './schemas/user.schema';
@@ -72,7 +73,13 @@ export class CoreUserService {
         bio: '',
         services: [],
         rating_avg: 0,
+        total_reviews: 0,
+        hourly_rate: 4000,
+        experience_years: 1,
+        accepted_sizes: ['pequeño', 'mediano', 'grande'],
         availability: [],
+        certifications: [],
+        certification_documents: [],
       });
       await caregiverProfile.save();
     }
@@ -123,6 +130,60 @@ export class CoreUserService {
     if (!user) {
       throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
     }
+    return this.toPublicUser(user);
+  }
+
+  async updateUser(userId: string, updateData: UpdateUserDto): Promise<any> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException('ID de usuario no válido');
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+
+    if (updateData.name !== undefined) {
+      updatePayload.name = updateData.name.trim();
+    }
+
+    if (updateData.email !== undefined) {
+      const normalizedEmail = updateData.email.trim().toLowerCase();
+      const duplicate = await this.userModel
+        .findOne({
+          email: normalizedEmail,
+          _id: { $ne: new Types.ObjectId(userId) },
+        })
+        .select('_id')
+        .exec();
+      if (duplicate) {
+        throw new ConflictException(
+          'El correo electrónico ya está en uso por otra cuenta.',
+        );
+      }
+      updatePayload.email = normalizedEmail;
+    }
+
+    if (updateData.city !== undefined) {
+      updatePayload.city = updateData.city;
+    }
+
+    if (updateData.phone !== undefined) {
+      const trimmedPhone = updateData.phone.trim();
+      updatePayload.phone = trimmedPhone
+        ? encryptPhone(trimmedPhone, this.getPhoneEncryptionKey())
+        : '';
+    }
+
+    const user = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $set: updatePayload },
+        { new: true, runValidators: true },
+      )
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${userId} no encontrado`);
+    }
+
     return this.toPublicUser(user);
   }
 
@@ -257,10 +318,27 @@ export class CoreUserService {
     if (!Types.ObjectId.isValid(userId)) {
       throw new NotFoundException('ID de usuario no válido');
     }
+
+    const { phone, ...profileFields } = updateData;
+
+    if (phone !== undefined) {
+      const trimmedPhone = phone.trim();
+      const encryptedPhone = trimmedPhone
+        ? encryptPhone(trimmedPhone, this.getPhoneEncryptionKey())
+        : '';
+      await this.userModel
+        .findByIdAndUpdate(
+          userId,
+          { $set: { phone: encryptedPhone } },
+          { new: true, runValidators: true },
+        )
+        .exec();
+    }
+
     const profile = await this.profileModel
       .findOneAndUpdate(
         { user_id: new Types.ObjectId(userId) },
-        { $set: updateData },
+        { $set: profileFields },
         { new: true, runValidators: true },
       )
       .exec();
@@ -374,7 +452,7 @@ export class CoreUserService {
     };
   }
 
-  // Función interna para recalcular promedio de estrellas
+  // Función interna para recalcular promedio de estrellas y total de reseñas
   private async updateCaregiverAverageRating(
     caregiverId: string,
   ): Promise<void> {
@@ -389,7 +467,7 @@ export class CoreUserService {
     await this.profileModel
       .updateOne(
         { user_id: new Types.ObjectId(caregiverId) },
-        { $set: { rating_avg: avg } },
+        { $set: { rating_avg: avg, total_reviews: reviews.length } },
       )
       .exec();
   }

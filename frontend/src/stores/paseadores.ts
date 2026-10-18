@@ -39,23 +39,40 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
           const rawCity = user.city || profile?.city || profile?.zona || 'Cipolletti'
           const zoneName = COVERAGE_ZONES.includes(rawCity) ? rawCity : 'Cipolletti'
           const fotoUrl = formatImageUrl(profile?.profile_image || user.profile_image)
+          const galeriaUrls = Array.isArray(profile?.gallery_images)
+            ? profile.gallery_images.filter(Boolean).map((img: string) => formatImageUrl(img))
+            : []
+          const certificaciones = Array.isArray(profile?.certifications)
+            ? profile.certifications.filter(Boolean)
+            : []
+          const documentosCertificacion = Array.isArray(profile?.certification_documents)
+            ? profile.certification_documents.filter(Boolean).map((doc: string) => formatImageUrl(doc))
+            : []
+          const tamanos: TamanoMascota[] =
+            Array.isArray(profile?.accepted_sizes) && profile.accepted_sizes.length > 0
+              ? profile.accepted_sizes
+              : ['pequeño', 'mediano', 'grande']
 
           paseadoresDisponibles.push({
             id: user._id,
             nombre: user.name,
+            rol: user.role === 'caregiver' ? 'caregiver' : 'walker',
             foto: fotoUrl,
+            galeriaFotos: galeriaUrls,
+            certificaciones,
+            documentosCertificacion,
             calificacion: Number(profile?.rating_avg) || 5.0,
             totalResenas: Number(profile?.total_reviews) || 0,
-            tarifaHora: Number(profile?.tarifaHora) || 4000,
+            tarifaHora: Number(profile?.hourly_rate ?? profile?.tarifaHora) || 4000,
             aniosExperiencia: Number(profile?.experience_years) || 1,
             biografia: profile?.bio || 'Paseador y cuidador comprometido con el cuidado y felicidad de tu mascota.',
             zona: zoneName,
             telefono: user.phone || '',
             diasDisponibles: profile?.availability && profile.availability.length ? profile.availability : ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
             horariosDisponibles: ['mañana', 'tarde'],
-            insignias: ['Verificado'],
+            insignias: ['Verificado', ...certificaciones],
             especialidades: profile?.services && profile.services.length ? profile.services : ['Paseo', 'Cuidado'],
-            tamanosAceptados: ['pequeño', 'mediano', 'grande'],
+            tamanosAceptados: tamanos,
             destacado: false,
           })
         }
@@ -74,7 +91,8 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
   const filtros = ref<FiltrosPaseador>({
     busqueda: '',
     zona: '',
-    tarifaMaxima: 8000,
+    rol: '',
+    tarifaMaxima: 100000,
     calificacionMinima: 0,
     tamanoMascota: '',
   })
@@ -93,6 +111,11 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
 
       // Filtro por zona (select)
       if (filtros.value.zona !== '' && p.zona !== filtros.value.zona) {
+        return false
+      }
+
+      // Filtro por rol (paseador / cuidador)
+      if (filtros.value.rol !== '' && p.rol !== filtros.value.rol) {
         return false
       }
 
@@ -128,7 +151,8 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
     filtros.value = {
       busqueda: '',
       zona: '',
-      tarifaMaxima: 8000,
+      rol: '',
+      tarifaMaxima: 100000,
       calificacionMinima: 0,
       tamanoMascota: '',
     }

@@ -9,6 +9,7 @@ import {
   CreateReviewDto,
   PaginationDto,
   UpdateCaregiverProfileDto,
+  UpdateUserDto,
 } from 'y/contracts';
 
 @Controller()
@@ -40,6 +41,13 @@ export class CoreUserServiceController {
   @MessagePattern({ cmd: 'get_user_by_id' })
   async getUserById(@Payload() id: string) {
     return this.coreUserService.getUserById(id);
+  }
+
+  @MessagePattern({ cmd: 'update_user' })
+  async updateUser(
+    @Payload() data: { user_id: string; updateData: UpdateUserDto },
+  ) {
+    return this.coreUserService.updateUser(data.user_id, data.updateData);
   }
 
   @MessagePattern({ cmd: 'delete_user' })
