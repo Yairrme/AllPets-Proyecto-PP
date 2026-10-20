@@ -6,7 +6,8 @@ import { AppService } from './app.service';
 import { AuthController } from './auth.controller';
 import { UserController } from './user.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { validateEnvironment } from 'y/common';
@@ -21,10 +22,14 @@ import { PublicCaregiversController } from './public-caregivers.controller';
       validate: validateEnvironment,
     }),
     JwtModule.register({}),
+    // Rate limit GLOBAL por IP (se aplica a todas las rutas vía APP_GUARD).
+    // Rutas sensibles (login, registro, uploads) tienen límites más estrictos
+    // con @Throttle en su controlador.
     ThrottlerModule.forRoot([
       {
+        name: 'default',
         ttl: 60_000,
-        limit: 10,
+        limit: parseInt(process.env.THROTTLE_LIMIT || '100', 10),
       },
     ]),
 
@@ -53,6 +58,11 @@ import { PublicCaregiversController } from './public-caregivers.controller';
     HealthController,
     PublicCaregiversController,
   ],
-  providers: [AppService, JwtAuthGuard, RolesGuard],
+  providers: [
+    AppService,
+    JwtAuthGuard,
+    RolesGuard,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

@@ -2,14 +2,21 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsEmail,
-  IsEnum,
   IsIn,
   IsNotEmpty,
   IsString,
+  MaxLength,
   MinLength,
   ValidateIf,
 } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
+
+/** Roles que se pueden elegir al registrarse (ADMIN queda excluido) */
+export const REGISTRABLE_ROLES = [
+  UserRole.CLIENT,
+  UserRole.WALKER,
+  UserRole.CAREGIVER,
+];
 
 export class RegisterDto {
   @ApiProperty({
@@ -34,6 +41,8 @@ export class RegisterDto {
   })
   @IsString()
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres.' })
+  // bcrypt ignora todo lo que supere 72 bytes
+  @MaxLength(72, { message: 'La contraseña no puede superar 72 caracteres.' })
   @IsNotEmpty({ message: 'La contraseña es obligatoria.' })
   password: string;
 
@@ -54,8 +63,9 @@ export class RegisterDto {
     description:
       'Número de teléfono (obligatorio para cuidadores y paseadores)',
   })
-  @ValidateIf((value) => value.role !== UserRole.CLIENT)
+  @ValidateIf((value) => value.role !== UserRole.CLIENT || value.phone != null)
   @IsString({ message: 'El teléfono debe ser texto.' })
+  @MaxLength(30, { message: 'El teléfono no puede superar 30 caracteres.' })
   @ValidateIf((value) => value.role !== UserRole.CLIENT)
   @IsNotEmpty({
     message: 'El teléfono es obligatorio para paseadores y cuidadores.',
@@ -63,14 +73,18 @@ export class RegisterDto {
   phone: string;
 
   @ApiProperty({
-    enum: UserRole,
+    enum: [UserRole.CLIENT, UserRole.WALKER, UserRole.CAREGIVER],
     example: UserRole.CLIENT,
-    description: 'Rol del usuario en la plataforma',
+    description:
+      'Rol del usuario en la plataforma (no se permite registrarse como admin)',
   })
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
-  @IsEnum(UserRole, { message: 'El rol especificado no es válido.' })
+  // SEGURIDAD: el rol ADMIN nunca puede autoasignarse desde el registro público
+  @IsIn(REGISTRABLE_ROLES, {
+    message: 'El rol especificado no es válido.',
+  })
   @IsNotEmpty({ message: 'El rol es obligatorio.' })
   role: UserRole;
 }

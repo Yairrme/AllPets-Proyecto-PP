@@ -7,13 +7,24 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
 
+/**
+ * Solo se aceptan rutas generadas por nuestros endpoints de subida
+ * (ej: /uploads/file-1700000000000-abcd.jpg). Evita inyectar URLs externas
+ * o esquemas peligrosos como javascript: en campos de imagen.
+ */
+const UPLOAD_PATH_REGEX =
+  /^\/uploads\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp|gif)$/i;
+const UPLOAD_PATH_MESSAGE = 'Ruta de imagen no válida.';
+
 export class UpdateCaregiverProfileDto {
   @ApiPropertyOptional({
-    example: 'Amante de los animales con más de 3 años de experiencia en paseos.',
+    example:
+      'Amante de los animales con más de 3 años de experiencia en paseos.',
     description: 'Biografía / descripción del cuidador',
   })
   @IsOptional()
@@ -76,7 +87,8 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: '+5492991234567',
-    description: 'Teléfono de contacto del trabajador (actualiza el documento User)',
+    description:
+      'Teléfono de contacto del trabajador (actualiza el documento User)',
   })
   @IsOptional()
   @IsString()
@@ -90,6 +102,7 @@ export class UpdateCaregiverProfileDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
+  @Matches(UPLOAD_PATH_REGEX, { message: UPLOAD_PATH_MESSAGE })
   profile_image?: string;
 
   @ApiPropertyOptional({
@@ -101,6 +114,7 @@ export class UpdateCaregiverProfileDto {
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @Matches(UPLOAD_PATH_REGEX, { each: true, message: UPLOAD_PATH_MESSAGE })
   gallery_images?: string[];
 
   @ApiPropertyOptional({
@@ -116,13 +130,14 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['/uploads/cert-1.jpg'],
-    description: 'Rutas de fotos o comprobantes de certificaciones y permisos municipales',
+    description:
+      'Rutas de fotos o comprobantes de certificaciones y permisos municipales',
     type: [String],
   })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
+  @Matches(UPLOAD_PATH_REGEX, { each: true, message: UPLOAD_PATH_MESSAGE })
   certification_documents?: string[];
 }
-

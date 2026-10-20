@@ -10,8 +10,12 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PaginationDto } from 'y/contracts';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Caregivers')
+// Límite más amplio: el listado público pide el perfil de cada paseador.
+// TODO: devolver los perfiles unidos en /caregivers para evitar N+1 requests.
+@Throttle({ default: { limit: 300, ttl: 60_000 } })
 @Controller('caregivers')
 export class PublicCaregiversController {
   constructor(
@@ -19,7 +23,9 @@ export class PublicCaregiversController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar cuidadores y paseadores activos (Paginado)' })
+  @ApiOperation({
+    summary: 'Listar cuidadores y paseadores activos (Paginado)',
+  })
   @ApiResponse({ status: 200, description: 'Listado obtenido exitosamente' })
   async getCaregivers(@Query() pagination: PaginationDto) {
     try {

@@ -59,5 +59,3 @@ export class CaregiverProfile {
 
 export const CaregiverProfileSchema =
   SchemaFactory.createForClass(CaregiverProfile);
-
-

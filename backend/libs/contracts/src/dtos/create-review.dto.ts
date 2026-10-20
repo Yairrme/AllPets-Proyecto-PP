@@ -9,7 +9,9 @@ import {
 } from 'class-validator';
 
 export class CreateReviewDto {
-  @ApiPropertyOptional({ description: 'ID del autor (se inyecta automáticamente desde el token JWT)' })
+  @ApiPropertyOptional({
+    description: 'ID del autor (se inyecta automáticamente desde el token JWT)',
+  })
   @IsString()
   @IsOptional()
   reviewer_id: string;

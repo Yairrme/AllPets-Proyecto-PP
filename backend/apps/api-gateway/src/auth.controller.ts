@@ -6,12 +6,11 @@ import {
   HttpStatus,
   HttpCode,
   BadRequestException,
-  UseGuards,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { RegisterDto, LoginDto } from 'y/contracts';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Auth')
@@ -23,9 +22,18 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  // Máx. 5 registros cada 15 minutos por IP (evita creación masiva de cuentas)
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o email ya en uso' })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o email ya en uso',
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiados intentos, probá más tarde',
+  })
   async register(@Body() registerDto: RegisterDto) {
     try {
       const result = await firstValueFrom(
@@ -41,11 +49,18 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ThrottlerGuard)
+  // Máx. 5 intentos de login por minuto por IP (fuerza bruta)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Iniciar sesión' })
-  @ApiResponse({ status: 200, description: 'Login exitoso, devuelve JWT token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login exitoso, devuelve JWT token',
+  })
   @ApiResponse({ status: 400, description: 'Credenciales inválidas' })
+  @ApiResponse({
+    status: 429,
+    description: 'Demasiados intentos, probá más tarde',
+  })
   async login(@Body() loginDto: LoginDto) {
     try {
       const result = await firstValueFrom(

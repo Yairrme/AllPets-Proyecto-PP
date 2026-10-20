@@ -26,7 +26,11 @@ import {
   CaregiverProfileDocument,
 } from './schemas/caregiver-profile.schema';
 import { Review, ReviewDocument } from './schemas/review.schema';
-import { decryptPhone, encryptPhone } from './security/phone-crypto';
+import {
+  decryptPhone,
+  encryptPhone,
+  isEncryptedPhone,
+} from './security/phone-crypto';
 
 @Injectable()
 export class CoreUserService {
@@ -44,6 +48,13 @@ export class CoreUserService {
   async register(registerDto: RegisterDto): Promise<any> {
     const { password, name, city, phone, role } = registerDto;
     const email = registerDto.email.trim().toLowerCase();
+
+    // Defensa en profundidad: nunca permitir crear administradores por registro
+    if (role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'No está permitido registrarse con ese rol.',
+      );
+    }
 
     // Verificar si el usuario ya existe
     const existingUser = await this.userModel.findOne({ email }).exec();
@@ -434,7 +445,8 @@ export class CoreUserService {
     const [reviews, total] = await Promise.all([
       this.reviewModel
         .find(filter)
-        .populate('reviewer_id', 'name email')
+        // Solo datos públicos del autor: NUNCA exponer el email (endpoint público)
+        .populate('reviewer_id', 'name profile_image')
         .sort({ created_at: -1 })
         .skip((pagination.page - 1) * pagination.limit)
         .limit(pagination.limit)
@@ -485,7 +497,10 @@ export class CoreUserService {
       );
       userResponse.phone = phone;
 
-      if (phone !== user.phone) {
+      // Migración: si el teléfono estaba guardado en texto plano, cifrarlo.
+      // (Antes se comparaba `phone !== user.phone`, que siempre era true para
+      // teléfonos cifrados y provocaba un UPDATE en cada lectura.)
+      if (!isEncryptedPhone(user.phone)) {
         await this.userModel
           .updateOne(
             { _id: user._id },

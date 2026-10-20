@@ -28,9 +28,7 @@ import {
   UserRole,
 } from 'y/contracts';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { mkdirSync } from 'fs';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -44,22 +42,11 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { Roles } from './auth/roles.decorator';
 import type { AuthenticatedRequest } from './auth/auth.types';
+import { OwnerOrAdminGuard } from './auth/owner-or-admin.guard';
+import { imageUploadOptions as multerOptions } from './uploads/upload-options';
 
-// Configuración de Multer para guardar localmente en 'uploads'
-const multerOptions = {
-  storage: diskStorage({
-    destination: join(process.cwd(), 'uploads'),
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      cb(
-        null,
-        `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`,
-      );
-    },
-  }),
-};
-
-mkdirSync(join(process.cwd(), 'uploads'), { recursive: true });
+/** Límite para endpoints de subida: 10 peticiones por minuto por IP */
+const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
@@ -74,8 +61,17 @@ export class UserController {
   @ApiOperation({ summary: 'Obtener un usuario por ID' })
   @ApiParam({ name: 'id', description: 'ID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario encontrado' })
-  @ApiResponse({ status: 400, description: 'Usuario no encontrado o ID inválido' })
-  async getUserById(@Param('id') id: string) {
+  @ApiResponse({
+    status: 400,
+    description: 'Usuario no encontrado o ID inválido',
+  })
+  @ApiResponse({ status: 403, description: 'Solo puedes ver tu propio perfil' })
+  async getUserById(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    // Evita que un usuario consulte email/teléfono de otros usuarios
+    this.assertCanManageUser(id, request);
     try {
       return await firstValueFrom(
         this.userServiceClient.send({ cmd: 'get_user_by_id' }, id),
@@ -88,10 +84,16 @@ export class UserController {
   }
 
   @Put('users/:id')
-  @ApiOperation({ summary: 'Actualizar datos personales del usuario (nombre, email, ciudad, teléfono)' })
+  @ApiOperation({
+    summary:
+      'Actualizar datos personales del usuario (nombre, email, ciudad, teléfono)',
+  })
   @ApiParam({ name: 'id', description: 'ID del usuario a actualizar' })
   @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
-  @ApiResponse({ status: 403, description: 'Solo puedes modificar tu propio perfil' })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo puedes modificar tu propio perfil',
+  })
   async updateUser(
     @Param('id') id: string,
     @Body() updateData: UpdateUserDto,
@@ -118,7 +120,10 @@ export class UserController {
   @ApiOperation({ summary: 'Eliminar usuario (Solo Admin)' })
   @ApiParam({ name: 'id', description: 'ID del usuario a eliminar' })
   @ApiResponse({ status: 200, description: 'Usuario eliminado exitosamente' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado (Requiere rol ADMIN)' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado (Requiere rol ADMIN)',
+  })
   async deleteUser(@Param('id') id: string) {
     try {
       return await firstValueFrom(
@@ -135,7 +140,10 @@ export class UserController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Listar todos los usuarios (Solo Admin)' })
   @ApiResponse({ status: 200, description: 'Listado de usuarios' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado (Requiere rol ADMIN)' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado (Requiere rol ADMIN)',
+  })
   async getAllUsers(@Query() pagination: PaginationDto) {
     try {
       return await firstValueFrom(
@@ -172,7 +180,10 @@ export class UserController {
   @ApiOperation({ summary: 'Actualizar perfil de cuidador/paseador' })
   @ApiParam({ name: 'userId', description: 'ID del cuidador a actualizar' })
   @ApiResponse({ status: 200, description: 'Perfil actualizado exitosamente' })
-  @ApiResponse({ status: 403, description: 'Solo puedes modificar tu propio perfil' })
+  @ApiResponse({
+    status: 403,
+    description: 'Solo puedes modificar tu propio perfil',
+  })
   async updateCaregiverProfile(
     @Param('userId') userId: string,
     @Body() updateData: UpdateCaregiverProfileDto,
@@ -209,7 +220,12 @@ export class UserController {
       },
     },
   })
-  @ApiResponse({ status: 200, description: 'Foto de perfil subida exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Foto de perfil subida exitosamente',
+  })
+  @Throttle(UPLOAD_THROTTLE)
+  @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadUserImage(
     @Param('userId') userId: string,
@@ -251,6 +267,8 @@ export class UserController {
     },
   })
   @ApiResponse({ status: 200, description: 'Foto profesional subida' })
+  @Throttle(UPLOAD_THROTTLE)
+  @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadProfileImage(
     @Param('userId') userId: string,
@@ -295,6 +313,8 @@ export class UserController {
     },
   })
   @ApiResponse({ status: 200, description: 'Imágenes agregadas a la galería' })
+  @Throttle(UPLOAD_THROTTLE)
+  @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
   async uploadGalleryImages(
     @Param('userId') userId: string,
@@ -339,7 +359,8 @@ export class UserController {
   @Post('users/:userId/caregiver-profile/certifications')
   @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Subir comprobantes de certificaciones o permisos municipales (hasta 10 archivos)',
+    summary:
+      'Subir comprobantes de certificaciones o permisos municipales (hasta 10 archivos)',
   })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiConsumes('multipart/form-data')
@@ -353,7 +374,8 @@ export class UserController {
             type: 'string',
             format: 'binary',
           },
-          description: 'Fotos o comprobantes de certificaciones/permisos municipales',
+          description:
+            'Fotos o comprobantes de certificaciones/permisos municipales',
         },
       },
     },
@@ -362,6 +384,8 @@ export class UserController {
     status: 200,
     description: 'Comprobantes de certificación agregados al perfil',
   })
+  @Throttle(UPLOAD_THROTTLE)
+  @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
   async uploadCertificationDocuments(
     @Param('userId') userId: string,
@@ -410,7 +434,10 @@ export class UserController {
   @Roles(UserRole.CLIENT)
   @ApiOperation({ summary: 'Crear una reseña a un cuidador (Solo Clientes)' })
   @ApiResponse({ status: 201, description: 'Reseña creada exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos o error al registrar la reseña' })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o error al registrar la reseña',
+  })
   async createReview(
     @Body() createReviewDto: CreateReviewDto,
     @Req() request: AuthenticatedRequest,

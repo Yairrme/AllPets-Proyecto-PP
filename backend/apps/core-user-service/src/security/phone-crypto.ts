@@ -17,6 +17,10 @@ export function encryptPhone(phone: string, key: Buffer): string {
   return `${PREFIX}${Buffer.concat([iv, authTag, encrypted]).toString('base64')}`;
 }
 
+export function isEncryptedPhone(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.startsWith(PREFIX);
+}
+
 export function decryptPhone(value: string, key: Buffer): string {
   if (!value.startsWith(PREFIX)) {
     return value;
