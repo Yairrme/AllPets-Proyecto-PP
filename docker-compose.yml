@@ -1,0 +1,28 @@
+services:
+  # Base de datos MongoDB para los microservicios (Users DB, Market DB)
+  mongo:
+    image: mongo:7.0
+    container_name: allpets_mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=allpets_users
+
+  # Cache y geolocalización en tiempo real (Reservas y GPS de paseadores)
+  redis:
+    image: redis:7-alpine
+    container_name: allpets_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
