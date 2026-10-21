@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import logo from './assets/logo.png'
@@ -8,16 +8,20 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+const activeSection = ref<'explorar' | 'beneficios'>('explorar')
+let isProgrammaticScroll = false
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null
+
 const isWorker = computed(() => {
   return authStore.user?.role === 'walker' || authStore.user?.role === 'caregiver'
 })
 
 const isExplorarActive = computed(() => {
-  return route.path === '/paseadores' && route.hash !== '#beneficios'
+  return route.path === '/paseadores' && activeSection.value === 'explorar'
 })
 
 const isBeneficiosActive = computed(() => {
-  return route.path === '/paseadores' && route.hash === '#beneficios'
+  return route.path === '/paseadores' && activeSection.value === 'beneficios'
 })
 
 const userRoleBadge = computed(() => {
@@ -26,8 +30,65 @@ const userRoleBadge = computed(() => {
   return 'Cliente'
 })
 
+function updateSectionOnScroll() {
+  if (isProgrammaticScroll || route.path !== '/paseadores') return
+  const el = document.getElementById('beneficios')
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  // Si la sección #beneficios ya entró en la mitad superior de la pantalla
+  if (rect.top <= window.innerHeight * 0.45) {
+    activeSection.value = 'beneficios'
+  } else {
+    activeSection.value = 'explorar'
+  }
+}
+
+function lockProgrammaticScroll(section: 'explorar' | 'beneficios') {
+  activeSection.value = section
+  isProgrammaticScroll = true
+  if (scrollTimeout) clearTimeout(scrollTimeout)
+  scrollTimeout = setTimeout(() => {
+    isProgrammaticScroll = false
+  }, 750)
+}
+
+async function goToExplorar() {
+  lockProgrammaticScroll('explorar')
+  if (route.path !== '/paseadores' || route.hash) {
+    await router.push({ path: '/paseadores', hash: '' })
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+async function goToBeneficios() {
+  lockProgrammaticScroll('beneficios')
+  if (route.path !== '/paseadores' || route.hash !== '#beneficios') {
+    await router.push({ path: '/paseadores', hash: '#beneficios' })
+  }
+  const el = document.getElementById('beneficios')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+watch(
+  () => [route.path, route.hash],
+  ([newPath, newHash]) => {
+    if (newPath === '/paseadores') {
+      activeSection.value = newHash === '#beneficios' ? 'beneficios' : 'explorar'
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   authStore.loadUserFromStorage()
+  window.addEventListener('scroll', updateSectionOnScroll, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateSectionOnScroll)
+  if (scrollTimeout) clearTimeout(scrollTimeout)
 })
 
 const handleLogout = () => {
@@ -66,9 +127,10 @@ const handleLogout = () => {
 
         <!-- Enlaces de Navegación Minimalistas (Ocultos para trabajadores) -->
         <nav v-if="!isWorker" class="hidden md:flex items-center gap-8 font-semibold text-sm">
-          <router-link
-            :to="{ path: '/paseadores', hash: '' }"
-            class="relative py-1.5 transition-all duration-300"
+          <button
+            type="button"
+            @click="goToExplorar"
+            class="relative py-1.5 transition-all duration-300 cursor-pointer"
             :class="isExplorarActive ? 'text-amber-700 font-bold' : 'text-stone-600 hover:text-amber-700'"
           >
             Explorar Paseadores
@@ -76,10 +138,11 @@ const handleLogout = () => {
               class="absolute bottom-0 left-0 h-0.5 bg-amber-600 rounded-full transition-all duration-300"
               :class="isExplorarActive ? 'w-full opacity-100' : 'w-0 opacity-0'"
             />
-          </router-link>
-          <router-link
-            :to="{ path: '/paseadores', hash: '#beneficios' }"
-            class="relative py-1.5 transition-all duration-300"
+          </button>
+          <button
+            type="button"
+            @click="goToBeneficios"
+            class="relative py-1.5 transition-all duration-300 cursor-pointer"
             :class="isBeneficiosActive ? 'text-amber-700 font-bold' : 'text-stone-600 hover:text-amber-700'"
           >
             Cómo funciona
@@ -87,7 +150,7 @@ const handleLogout = () => {
               class="absolute bottom-0 left-0 h-0.5 bg-amber-600 rounded-full transition-all duration-300"
               :class="isBeneficiosActive ? 'w-full opacity-100' : 'w-0 opacity-0'"
             />
-          </router-link>
+          </button>
         </nav>
 
         <!-- Perfil / CTA derecho -->
@@ -139,7 +202,7 @@ const handleLogout = () => {
     <main class="flex-1 text-stone-900 overflow-x-hidden">
       <RouterView v-slot="{ Component, route: currentRoute }">
         <Transition name="page-fade" mode="out-in">
-          <component :is="Component" :key="currentRoute.fullPath" />
+          <component :is="Component" :key="currentRoute.path" />
         </Transition>
       </RouterView>
     </main>

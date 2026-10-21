@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { usePaseadoresStore } from '../stores/paseadores'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
@@ -10,12 +11,18 @@ import PaseadoresFilter from '../components/paseadores/PaseadoresFilter.vue'
 import heroPetsImg from '../assets/hero-pets.jpg'
 import dogLeashImg from '../assets/dog-leash.jpg'
 
+const route = useRoute()
 const store = usePaseadoresStore()
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 
-onMounted(() => {
-  store.fetchPaseadores()
+onMounted(async () => {
+  await store.fetchPaseadores()
+  if (route.hash === '#beneficios') {
+    await nextTick()
+    const el = document.getElementById('beneficios')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 })
 
 const selectedPaseador = ref<Paseador | null>(null)
@@ -203,7 +210,7 @@ async function handleCreateReview() {
       </div>
 
       <!-- Sección Cómo Funciona (#beneficios) -->
-      <section id="beneficios" class="mt-20 pt-14 border-t border-[--color-line] scroll-mt-24 space-y-16">
+      <section id="beneficios" class="mt-20 pt-14 border-t border-[--color-line] scroll-mt-32 space-y-16">
         <div>
           <div class="max-w-2xl mb-10">
             <span class="wp-label">Transparencia y confianza</span>

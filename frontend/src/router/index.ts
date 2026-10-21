@@ -9,14 +9,22 @@ import ClientProfileView from '../views/ClientProfileView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to) {
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    const scrollTarget = () => {
+      if (to.hash) {
+        return { el: to.hash, top: 120, behavior: 'smooth' as const }
+      }
+      return { top: 0, behavior: 'smooth' as const }
+    }
+    if (to.path === from.path) {
+      return scrollTarget()
+    }
     return new Promise((resolve) => {
       setTimeout(() => {
-        if (to.hash) {
-          resolve({ el: to.hash, behavior: 'smooth' })
-        } else {
-          resolve({ top: 0, behavior: 'smooth' })
-        }
+        resolve(scrollTarget())
       }, 300)
     })
   },
