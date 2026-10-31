@@ -1,18 +1,32 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/ClientProfileView.vue
+  ROL EN LA ARQUITECTURA: Vista de Gestión de Perfil Personal del Cliente.
+  ============================================================================
+  Descripción general:
+  Permite al usuario con rol `'client'` consultar y editar su información personal
+  (nombre, correo, ciudad y teléfono) así como actualizar su fotografía de perfil.
+  Sincroniza los cambios tanto con el backend (a través de `useProfileStore`) como
+  con la sesión activa en `useAuthStore` y `localStorage`.
+-->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 
+// Stores de Pinia para leer/actualizar la sesión actual y ejecutar peticiones al API Gateway
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 const API_URL = 'http://localhost:3000'
 
+// Estados reactivos de control de interfaz (subida de foto, modo edición, guardado y alertas)
 const isUploadingImage = ref(false)
 const isEditing = ref(false)
 const isSaving = ref(false)
 const successMsg = ref('')
 const errorMsg = ref('')
 
+// Objeto reactivo que respalda los inputs del formulario cuando `isEditing` es `true`
 const editForm = ref({
   name: '',
   email: '',
@@ -20,6 +34,11 @@ const editForm = ref({
   phone: '',
 })
 
+/**
+ * Al montar el componente:
+ * 1. Carga el usuario desde `localStorage`.
+ * 2. Consulta al backend (`GET /users/:id`) para obtener los datos más recientes y sincronizarlos.
+ */
 onMounted(async () => {
   authStore.loadUserFromStorage()
   const userId = authStore.user?._id || authStore.user?.id
@@ -34,12 +53,18 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Construye la URL absoluta de la imagen de perfil para mostrarla en el elemento `<img>`.
+ */
 const getImageUrl = (path: string) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return `${API_URL}${path}`
 }
 
+/**
+ * Activa el modo de edición copiando los datos actuales del usuario hacia `editForm`.
+ */
 const startEditing = () => {
   successMsg.value = ''
   errorMsg.value = ''
@@ -52,11 +77,18 @@ const startEditing = () => {
   isEditing.value = true
 }
 
+/**
+ * Cancela la edición y vuelve a la vista de solo lectura sin guardar cambios.
+ */
 const cancelEditing = () => {
   errorMsg.value = ''
   isEditing.value = false
 }
 
+/**
+ * Envía los datos editados al API Gateway (`PUT /users/:id`) a través de `profileStore.updateClientProfile`
+ * y actualiza la sesión local en `authStore` y `localStorage`.
+ */
 const handleSaveProfile = async () => {
   if (!authStore.user) return
   isSaving.value = true
@@ -85,6 +117,10 @@ const handleSaveProfile = async () => {
   }
 }
 
+/**
+ * Se dispara al seleccionar un archivo en el `<input type="file">`.
+ * Sube la nueva foto de perfil al servidor (`POST /users/:id/image`) y actualiza el avatar en el navbar.
+ */
 const handleProfileImageChange = async (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -123,9 +159,11 @@ const handleProfileImageChange = async (e: Event) => {
       </div>
     </div>
 
+    <!-- Tarjeta principal superpuesta sobre el banner superior (-mt-16) -->
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16">
       <div class="bg-white text-gray-900 shadow rounded-xl p-6 sm:p-10">
 
+        <!-- Mensajes de retroalimentación (éxito o error) -->
         <div v-if="successMsg" class="mb-6 p-3.5 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm font-medium">
           ✓ {{ successMsg }}
         </div>
@@ -161,7 +199,7 @@ const handleProfileImageChange = async (e: Event) => {
             </div>
           </div>
 
-          <!-- Información del cliente (Vista) -->
+          <!-- Información del cliente (Vista de solo lectura) -->
           <div v-if="!isEditing" class="flex-1 w-full space-y-6">
             <div>
               <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-4">
@@ -202,7 +240,7 @@ const handleProfileImageChange = async (e: Event) => {
             </div>
           </div>
 
-          <!-- Formulario de Edición del Cliente -->
+          <!-- Formulario de Edición del Cliente (activo cuando isEditing === true) -->
           <div v-else class="flex-1 w-full">
             <div class="border-b border-gray-200 pb-2 mb-4">
               <h3 class="text-lg font-bold text-gray-900">Editar Información Personal</h3>

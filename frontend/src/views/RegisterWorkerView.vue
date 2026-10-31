@@ -1,26 +1,43 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/RegisterWorkerView.vue
+  ROL EN LA ARQUITECTURA: Landing y Registro para Paseadores y Cuidadores.
+  ============================================================================
+  Descripción general:
+  Vista dedicada a captar y registrar prestadores de servicios (`walker` o `caregiver`).
+  Combina una columna informativa (imagen hero, pasos del proceso y beneficios)
+  con un formulario de alta rápida. Al enviarse, registra la cuenta mediante
+  `authStore.register()`, inicia sesión automáticamente con `authStore.login()`
+  y redirige al asistente inicial `/onboarding-trabajador` para completar el perfil.
+-->
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import walkersHeroImg from '../assets/walkers-hero.webp'
 
+// Instancias de router y store de autenticación
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Estados reactivos de los campos del formulario de trabajador
 const name = ref('')
 const email = ref('')
 const password = ref('')
 const city = ref('Cipolletti')
 const phone = ref('')
+// Rol seleccionado por defecto ('walker' = Paseador, 'caregiver' = Cuidador)
 const role = ref('walker')
 const errorMsg = ref('')
 const isLoading = ref(false)
 
+// Opciones de rol mostradas como tarjetas seleccionables en el formulario
 const roles = [
   { value: 'walker', title: 'Paseador', hint: 'Paseos diarios' },
   { value: 'caregiver', title: 'Cuidador', hint: 'Alojamiento y guardería' },
 ]
 
+// Pasos explicativos mostrados en la columna izquierda
 const steps = [
   {
     title: 'Crea tu perfil sin cargo',
@@ -36,6 +53,7 @@ const steps = [
   },
 ]
 
+// Grilla inferior de ventajas competitivas de trabajar en la plataforma
 const benefits = [
   { title: 'Tu horario y tu tarifa', text: 'Define tus días disponibles, tus servicios y tu presupuesto.' },
   { title: 'Clientes cercanos', text: 'Tu perfil se muestra a dueños de Cipolletti y Neuquén.' },
@@ -43,6 +61,12 @@ const benefits = [
   { title: 'Contacto directo', text: 'Coordina cada paseo por WhatsApp, cuando quieras.' },
 ]
 
+/**
+ * Procesa el alta del trabajador en dos pasos consecutivos contra el API Gateway:
+ * 1. `authStore.register(...)`: Crea el usuario con el rol `'walker'` o `'caregiver'`.
+ * 2. `authStore.login(...)`: Obtiene el token JWT inmediatamente para dejar la sesión iniciada.
+ * Finalmente redirige a `/onboarding-trabajador`.
+ */
 const handleRegisterWorker = async () => {
   errorMsg.value = ''
   isLoading.value = true
@@ -59,13 +83,14 @@ const handleRegisterWorker = async () => {
 </script>
 
 <template>
+  <!-- Contenedor principal con estética editorial cálida (clases wp-*) -->
   <div class="wp-root min-h-screen px-5 py-12 sm:px-8 sm:py-16">
     <div class="mx-auto max-w-6xl">
 
       <!-- Hero + formulario -->
       <div class="grid grid-cols-1 items-start gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
 
-        <!-- Izquierda -->
+        <!-- Izquierda: Propuesta de valor, foto destacada y lista numerada de pasos -->
         <div>
           <p class="wp-muted text-sm">Cipolletti y Neuquén</p>
           <h1 class="wp-serif mt-3 max-w-xl text-4xl font-semibold leading-[1.1] sm:text-5xl">
@@ -94,12 +119,13 @@ const handleRegisterWorker = async () => {
           </ol>
         </div>
 
-        <!-- Derecha: formulario -->
+        <!-- Derecha: formulario de registro de trabajador (fijo al hacer scroll en desktop) -->
         <div class="wp-card p-7 sm:p-9 lg:sticky lg:top-24">
           <h2 class="wp-serif text-2xl font-semibold">Crea tu perfil</h2>
           <p class="wp-muted mt-1 text-sm">Es gratis y te toma un minuto.</p>
 
           <form class="mt-7 space-y-5" @submit.prevent="handleRegisterWorker">
+            <!-- Selector de rol: Paseador vs Cuidador -->
             <fieldset>
               <legend class="wp-field-label mb-2">¿Qué servicio ofreces?</legend>
               <div class="grid grid-cols-2 gap-3">
@@ -116,11 +142,13 @@ const handleRegisterWorker = async () => {
               </div>
             </fieldset>
 
+            <!-- Nombre completo -->
             <div>
               <label for="name" class="wp-field-label">Nombre completo</label>
               <input id="name" type="text" required autocomplete="name" v-model="name" class="wp-input" placeholder="María Gómez" />
             </div>
 
+            <!-- Ciudad y WhatsApp -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label for="city" class="wp-field-label">Ciudad</label>
@@ -135,23 +163,28 @@ const handleRegisterWorker = async () => {
               </div>
             </div>
 
+            <!-- Correo electrónico -->
             <div>
               <label for="email-address" class="wp-field-label">Correo electrónico</label>
               <input id="email-address" type="email" autocomplete="email" required v-model="email" class="wp-input" placeholder="tu@correo.com" />
             </div>
 
+            <!-- Contraseña -->
             <div>
               <label for="password" class="wp-field-label">Contraseña</label>
               <input id="password" type="password" required minlength="6" autocomplete="new-password" v-model="password" class="wp-input" placeholder="Mínimo 6 caracteres" />
             </div>
 
+            <!-- Mensaje de error si falla el registro -->
             <p v-if="errorMsg" role="alert" class="wp-error">{{ errorMsg }}</p>
 
+            <!-- Botón de envío -->
             <button type="submit" :disabled="isLoading" class="wp-btn-primary w-full">
               {{ isLoading ? 'Creando cuenta...' : 'Crear cuenta' }}
             </button>
           </form>
 
+          <!-- Enlace para usuarios que en realidad buscan registrarse como clientes -->
           <p class="wp-muted mt-6 text-center text-sm">
             ¿Buscas una cuenta de cliente?
             <RouterLink to="/register" class="wp-link">Ir al registro</RouterLink>

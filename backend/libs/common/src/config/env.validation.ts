@@ -1,3 +1,8 @@
+/**
+ * Validación de variables de entorno al inicio de la aplicación.
+ * Si falta alguna variable crítica en el archivo `.env` o tiene un formato
+ * inválido, el servicio falla inmediatamente (Fail-Fast) con un mensaje claro.
+ */
 type Environment = Record<string, unknown>;
 
 function requiredString(environment: Environment, name: string): string {
@@ -21,6 +26,10 @@ function requiredPort(environment: Environment, name: string): string {
   return value;
 }
 
+/**
+ * Función invocada por `ConfigModule.forRoot({ validate: validateEnvironment })`.
+ * Comprueba secretos JWT, conexión a MongoDB, puertos y clave AES-256 de 32 bytes.
+ */
 export function validateEnvironment(environment: Environment): Environment {
   requiredString(environment, 'JWT_SECRET');
   requiredString(environment, 'MONGO_URI_USERS');

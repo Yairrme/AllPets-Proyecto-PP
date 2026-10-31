@@ -1,3 +1,18 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/PaseadoresView.vue
+  ROL EN LA ARQUITECTURA: Vista Principal del Catálogo de Paseadores y Cuidadores.
+  ============================================================================
+  Descripción general:
+  Es la pantalla pública principal de la aplicación (`/paseadores`). Se encarga de:
+  1. Presentar el Hero de bienvenida con los 3 pasos clave del servicio.
+  2. Incluir el componente de filtros (`PaseadoresFilter.vue`) y renderizar la grilla
+     reactiva de tarjetas (`PaseadorCard.vue`) alimentada por `usePaseadoresStore`.
+  3. Mostrar la sección informativa "Cómo funciona" (`#beneficios`).
+  4. Desplegar el modal detallado de perfil de cada trabajador (con `<Teleport to="body">`),
+     incluyendo galería ampliable, comprobantes municipales, contacto por WhatsApp y
+     el formulario para que usuarios con rol `'client'` publiquen reseñas.
+-->
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
@@ -11,11 +26,17 @@ import PaseadoresFilter from '../components/paseadores/PaseadoresFilter.vue'
 import heroPetsImg from '../assets/hero-pets.jpg'
 import dogLeashImg from '../assets/dog-leash.jpg'
 
+// Instancias de ruta actual y stores globales de Pinia (catálogo, sesión y perfiles/reseñas)
 const route = useRoute()
 const store = usePaseadoresStore()
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 
+/**
+ * Al montar la vista:
+ * 1. Solicita al backend la lista actualizada de paseadores y cuidadores (`store.fetchPaseadores()`).
+ * 2. Si la URL trae el hash `#beneficios`, hace scroll suave hacia esa sección una vez renderizado el DOM.
+ */
 onMounted(async () => {
   await store.fetchPaseadores()
   if (route.hash === '#beneficios') {
@@ -25,6 +46,7 @@ onMounted(async () => {
   }
 })
 
+// Estados reactivos para controlar el modal de perfil, el visor de fotos y el formulario de reseñas
 const selectedPaseador = ref<Paseador | null>(null)
 const isPerfilModalOpen = ref(false)
 const perfilPaseador = ref<Paseador | null>(null)
@@ -35,10 +57,17 @@ const reviewError = ref('')
 const reviewSuccess = ref('')
 const isSavingReview = ref(false)
 
+/**
+ * Limpia todos los caracteres no numéricos de un número telefónico para construir el link de `wa.me`.
+ */
 function sanitizePhone(phone: string) {
   return phone.replace(/[^\d]/g, '')
 }
 
+/**
+ * Abre una nueva pestaña hacia WhatsApp Web / App con un mensaje prearmado
+ * dirigido al teléfono del paseador o cuidador seleccionado.
+ */
 function handleContactar(paseador: Paseador) {
   selectedPaseador.value = paseador
   const telefono = paseador.telefono
@@ -48,6 +77,10 @@ function handleContactar(paseador: Paseador) {
   window.open(`https://wa.me/${phone}?text=Hola%20${encodeURIComponent(nombreCorto)},%20me%20gustaría%20contactarte%20para%20un%20paseo.`, '_blank')
 }
 
+/**
+ * Abre el modal con toda la información del trabajador seleccionado y carga sus
+ * reseñas desde el API Gateway (`GET /caregivers/:id/reviews`).
+ */
 function handleVerPerfil(paseador: Paseador) {
   perfilPaseador.value = paseador
   selectedGalleryImage.value = null
@@ -59,6 +92,11 @@ function handleVerPerfil(paseador: Paseador) {
   })
 }
 
+/**
+ * Envía una nueva reseña calificada (1 a 5 estrellas + comentario) al API Gateway (`POST /reviews`).
+ * Solo permitido para usuarios logueados con rol `'client'`. Luego recarga el catálogo
+ * para reflejar inmediatamente el nuevo promedio de calificación.
+ */
 async function handleCreateReview() {
   if (!authStore.user || authStore.user.role !== 'client' || !perfilPaseador.value) return
 

@@ -1,30 +1,60 @@
+/**
+ * ============================================================================
+ * ARCHIVO: stores/paseadores.ts
+ * ROL EN LA ARQUITECTURA: Store de Pinia (Composition API) del Catálogo de Paseadores.
+ * ============================================================================
+ * Descripción general:
+ * Administra la carga pública de paseadores y cuidadores desde el API Gateway,
+ * combina los datos básicos de usuario con su perfil profesional extendido
+ * (`CaregiverProfile`), formatea las URLs de imágenes y aplica el filtrado
+ * reactivo en tiempo real por ciudad, rol, búsqueda, tarifa, calificación y tamaño.
+ */
+
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import type { Paseador, FiltrosPaseador, TamanoMascota } from '../types/paseador'
 
+// Ciudades de cobertura oficial del servicio en el Alto Valle
 const COVERAGE_ZONES = ['Cipolletti', 'Neuquén']
 
 export const usePaseadoresStore = defineStore('paseadores', () => {
+  // ESTADO REACTIVO (Refs):
+  // Lista completa de paseadores/cuidadores obtenidos del backend
   const paseadores = ref<Paseador[]>([])
+  // Indicador de carga para mostrar skeletons/spinners mientras responde la API
   const isLoading = ref(false)
 
+  // Imagen de respaldo cuando un trabajador aún no ha subido su foto de perfil
   const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
 
+  /**
+   * Normaliza una ruta de imagen devuelta por el backend:
+   * - Si no hay ruta, devuelve el avatar por defecto.
+   * - Si ya es una URL absoluta (`http...`), la devuelve tal cual.
+   * - Si es una ruta relativa (`/uploads/...`), le antepone la URL del API Gateway (`http://localhost:3000`).
+   */
   function formatImageUrl(path?: string): string {
     if (!path) return DEFAULT_AVATAR
     if (path.startsWith('http')) return path
     return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
   }
 
+  /**
+   * Consulta al API Gateway (`GET /caregivers`) para obtener todos los trabajadores
+   * y luego enriquece cada uno consultando su perfil detallado (`GET /caregivers/:id/profile`),
+   * mapeando la respuesta del backend hacia la interfaz `Paseador` usada por la vista.
+   */
   async function fetchPaseadores() {
     isLoading.value = true
     try {
+      // 1. Llamada Axios al API Gateway para listar los usuarios con rol de trabajador
       const response = await axios.get('http://localhost:3000/caregivers')
       const users = response.data?.data || []
       
       const paseadoresDisponibles: Paseador[] = []
 
+      // 2. Iteramos cada trabajador para obtener su perfil extendido (tarifa, bio, galería, certificaciones)
       for (const user of users) {
         if (user.role === 'walker' || user.role === 'caregiver') {
           let profile: any = null
@@ -36,6 +66,7 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
             // Perfil aún sin datos adicionales o en proceso de carga
           }
 
+          // Normalización de ciudad, fotos, galería, certificaciones y tamaños aceptados
           const rawCity = user.city || profile?.city || profile?.zona || 'Cipolletti'
           const zoneName = COVERAGE_ZONES.includes(rawCity) ? rawCity : 'Cipolletti'
           const fotoUrl = formatImageUrl(profile?.profile_image || user.profile_image)
@@ -53,6 +84,7 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
               ? profile.accepted_sizes
               : ['pequeño', 'mediano', 'grande']
 
+          // Construimos el objeto tipado `Paseador` con valores por defecto seguros si faltan campos opcionales
           paseadoresDisponibles.push({
             id: user._id,
             nombre: user.name,
@@ -87,7 +119,7 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
     }
   }
 
-  // Filtros reactivos
+  // Filtros reactivos: almacenan los criterios seleccionados por el usuario en la interfaz
   const filtros = ref<FiltrosPaseador>({
     busqueda: '',
     zona: '',
@@ -97,7 +129,8 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
     tamanoMascota: '',
   })
 
-  // Getters
+  // Getters (Propiedades Computadas):
+  // Filtra automáticamente la lista `paseadores` cada vez que cambia algún criterio en `filtros`
   const paseadoresFiltrados = computed(() => {
     return paseadores.value.filter((p) => {
       // Filtro de búsqueda por nombre o biografía o zona
@@ -138,15 +171,17 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
     })
   })
 
+  // Devuelve las ciudades habilitadas para poblar los botones de filtro de ubicación
   const zonasDisponibles = computed(() => {
     return COVERAGE_ZONES
   })
 
-  // Acciones
+  // Acciones para modificar o restablecer los filtros
   function setFiltros(nuevosFiltros: Partial<FiltrosPaseador>) {
     filtros.value = { ...filtros.value, ...nuevosFiltros }
   }
 
+  // Restablece todos los filtros a sus valores iniciales para volver a mostrar todos los resultados
   function resetFiltros() {
     filtros.value = {
       busqueda: '',
@@ -158,6 +193,7 @@ export const usePaseadoresStore = defineStore('paseadores', () => {
     }
   }
 
+  // Busca un paseador puntual en memoria por su ID (útil para refrescar el modal tras crear una reseña)
   function getPaseadorById(id: string): Paseador | undefined {
     return paseadores.value.find((p) => p.id === id)
   }

@@ -14,6 +14,14 @@ import { validateEnvironment } from 'y/common';
 import { HealthController } from './health.controller';
 import { PublicCaregiversController } from './public-caregivers.controller';
 
+/**
+ * Módulo raíz del API Gateway (`AppModule`).
+ * Configura:
+ * 1. Variables de entorno globales validadas con `validateEnvironment`.
+ * 2. Módulo JWT para que `JwtAuthGuard` pueda verificar tokens.
+ * 3. `ThrottlerModule` y `ThrottlerGuard` como guard global contra abusos por IP.
+ * 4. Cliente de microservicio TCP (`USER_SERVICE`) que apunta a `core-user-service` (puerto 3001).
+ */
 @Module({
   imports: [
     // Variables de entorno para Gateway

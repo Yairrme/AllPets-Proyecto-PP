@@ -1,3 +1,16 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/LoginView.vue
+  ROL EN LA ARQUITECTURA: Vista de Inicio de Sesión (Autenticación de Usuarios).
+  ============================================================================
+  Descripción general:
+  Presenta el formulario de autenticación para todos los actores del sistema
+  (clientes, paseadores y cuidadores). Captura correo electrónico y contraseña,
+  invoca la acción `authStore.login()` (que se comunica con el API Gateway en
+  `POST /auth/login`) y redirige automáticamente según el rol del usuario:
+  - Trabajadores (`walker` / `caregiver`) -> `/mi-panel`
+  - Clientes (`client`) -> `/paseadores`
+-->
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
@@ -9,10 +22,12 @@ const router = useRouter()
 // authStore contiene la lógica para comunicarse con el backend
 const authStore = useAuthStore()
 
-// Variables reactivas para el formulario
+// Variables reactivas para el formulario (enlazadas con v-model en el template)
 const email = ref('')
 const password = ref('')
+// Almacena el mensaje de error si las credenciales son incorrectas o el servidor falla
 const errorMsg = ref('')
+// Estado de carga para deshabilitar el botón mientras se procesa la solicitud HTTP
 const isLoading = ref(false)
 
 // Función principal que se ejecuta al enviar el formulario
@@ -41,6 +56,7 @@ const handleLogin = async () => {
 </script>
 
 <template>
+  <!-- Contenedor principal centrado vertical y horizontalmente -->
   <div class="min-h-screen flex flex-col items-center justify-center bg-stone-50 py-10 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full bg-white rounded-3xl shadow-xl border border-stone-200/80 overflow-hidden">
       <!-- Imagen de mascotas en la parte superior del card -->
@@ -100,6 +116,7 @@ const handleLogin = async () => {
           </button>
         </div>
 
+        <!-- Acceso directo para explorar el catálogo sin necesidad de iniciar sesión -->
         <div class="text-center pt-2">
           <RouterLink to="/paseadores" class="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
             ← Continuar como invitado y ver paseadores

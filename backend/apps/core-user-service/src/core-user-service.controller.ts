@@ -12,6 +12,11 @@ import {
   UpdateUserDto,
 } from 'y/contracts';
 
+/**
+ * Controlador TCP del microservicio `core-user-service`.
+ * Cada método decorado con `@MessagePattern({ cmd: '...' })` responde a un comando
+ * enviado por el API Gateway a través de `ClientProxy.send(...)`.
+ */
 @Controller()
 export class CoreUserServiceController {
   constructor(

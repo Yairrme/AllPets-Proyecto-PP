@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 
+/**
+ * DTO (Data Transfer Object) para el inicio de sesión (`POST /auth/login`).
+ * Valida que el cliente envíe un email con formato válido y una contraseña no vacía.
+ */
 export class LoginDto {
   @ApiProperty({
     example: 'juan@allpets.com',

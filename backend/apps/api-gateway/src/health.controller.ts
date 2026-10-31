@@ -9,6 +9,11 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 
+/**
+ * Controlador de salud (`GET /health`).
+ * Verifica que el API Gateway esté activo y que pueda comunicarse por TCP
+ * con el microservicio `core-user-service` en menos de 1 segundo.
+ */
 @ApiTags('Health')
 @SkipThrottle() // Los health checks (Docker, monitoreo) no deben ser limitados
 @Controller('health')
@@ -29,6 +34,7 @@ export class HealthController {
   })
   async check() {
     try {
+      // Envía un ping TCP `{ cmd: 'health_check' }` con un timeout máximo de 1000 ms
       const userService = await firstValueFrom(
         this.userServiceClient
           .send({ cmd: 'health_check' }, {})
@@ -43,6 +49,7 @@ export class HealthController {
         },
       };
     } catch {
+      // Si el microservicio no responde a tiempo, devuelve HTTP 503 Service Unavailable
       throw new ServiceUnavailableException({
         status: 'error',
         service: 'api-gateway',

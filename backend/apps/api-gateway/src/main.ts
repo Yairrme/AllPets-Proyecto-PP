@@ -7,6 +7,12 @@ import { join } from 'path';
 import { timingSafeEqual } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 
+/**
+ * Punto de entrada (Bootstrap) del API Gateway (`apps/api-gateway`).
+ * Levanta el servidor HTTP principal (puerto 3000 por defecto), configura CORS,
+ * validación automática de DTOs (`ValidationPipe`), entrega de archivos estáticos
+ * subidos (`/uploads`) y la documentación interactiva OpenAPI/Swagger (`/api/docs`).
+ */
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 

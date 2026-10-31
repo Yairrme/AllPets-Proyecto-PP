@@ -8,6 +8,12 @@ import {
   Min,
 } from 'class-validator';
 
+/**
+ * DTO para la creación de una reseña o calificación hacia un paseador/cuidador.
+ * Nota de seguridad: aunque `reviewer_id` existe en el contrato para enviarse por TCP
+ * al microservicio, el API Gateway lo sobrescribe con el `sub` del token JWT del
+ * cliente autenticado para impedir que alguien publique reseñas a nombre de otro.
+ */
 export class CreateReviewDto {
   @ApiPropertyOptional({
     description: 'ID del autor (se inyecta automáticamente desde el token JWT)',

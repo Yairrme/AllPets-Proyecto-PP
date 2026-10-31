@@ -8,6 +8,10 @@ import {
   MinLength,
 } from 'class-validator';
 
+/**
+ * DTO para actualizar los datos básicos de una cuenta de usuario (`PUT /users/:id`).
+ * Todos los campos son opcionales para permitir actualizaciones parciales.
+ */
 export class UpdateUserDto {
   @ApiPropertyOptional({
     example: 'Juan Pérez',

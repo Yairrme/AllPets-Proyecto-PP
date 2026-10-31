@@ -1,8 +1,21 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/RegisterView.vue
+  ROL EN LA ARQUITECTURA: Vista de Registro de Clientes (Dueños de Mascotas).
+  ============================================================================
+  Descripción general:
+  Proporciona el formulario para que nuevos dueños de mascotas creen su cuenta
+  con el rol `'client'`. Envía los datos (nombre, correo, contraseña, ciudad y
+  teléfono) al API Gateway mediante `authStore.register()`. También incluye un
+  enlace destacado hacia `/trabaja-con-nosotros` para quienes deseen registrarse
+  como paseadores o cuidadores.
+-->
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
+// Instancias del enrutador y del store de autenticación
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -13,6 +26,7 @@ const password = ref('')
 const city = ref('Cipolletti')
 const phone = ref('')
 
+// Estados reactivos para feedback de errores y bloqueo de botón durante el envío
 const errorMsg = ref('')
 const isLoading = ref(false)
 
@@ -36,8 +50,10 @@ const handleRegister = async () => {
 </script>
 
 <template>
+  <!-- Contenedor principal del formulario de registro de clientes -->
   <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+      <!-- Encabezado y enlace alternativo a Login -->
       <div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
           Crear una cuenta
@@ -93,10 +109,12 @@ const handleRegister = async () => {
           </div>
         </div>
 
+        <!-- Alerta visual si ocurre un error de validación o correo duplicado -->
         <div v-if="errorMsg" class="text-red-700 text-sm font-medium text-center bg-red-100 p-3 rounded-md border border-red-200">
           {{ errorMsg }}
         </div>
 
+        <!-- Botón de envío del formulario -->
         <div>
           <button type="submit" :disabled="isLoading"
             class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm">

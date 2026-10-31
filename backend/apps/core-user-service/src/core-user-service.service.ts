@@ -32,6 +32,14 @@ import {
   isEncryptedPhone,
 } from './security/phone-crypto';
 
+/**
+ * Servicio principal de lógica de negocio (`CoreUserService`).
+ * Centraliza todas las operaciones sobre MongoDB para:
+ * 1. Registro e inicio de sesión (con hash bcrypt y firma de JWT).
+ * 2. ABM de usuarios y cifrado/descifrado automático de teléfonos (AES-256-GCM).
+ * 3. Gestión de perfiles profesionales de paseadores y cuidadores (`CaregiverProfile`).
+ * 4. Creación de reseñas y recálculo automático del promedio de estrellas (`rating_avg`).
+ */
 @Injectable()
 export class CoreUserService {
   constructor(
@@ -42,7 +50,7 @@ export class CoreUserService {
     private readonly reviewModel: Model<ReviewDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   // 1. AUTENTICACIÓN: Registro
   async register(registerDto: RegisterDto): Promise<any> {

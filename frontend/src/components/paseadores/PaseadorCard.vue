@@ -1,10 +1,23 @@
+<!--
+  ============================================================================
+  ARCHIVO: components/paseadores/PaseadorCard.vue
+  ROL EN LA ARQUITECTURA: Componente Presentacional de Tarjeta de Trabajador.
+  ============================================================================
+  Descripción general:
+  Renderiza la tarjeta visual resumida de un Paseador (`walker`) o Cuidador (`caregiver`)
+  dentro de la grilla de `PaseadoresView.vue`. Muestra su foto, etiqueta de rol,
+  calificación promedio, ciudad, tarifa por hora, biografía breve e insignias,
+  y emite eventos hacia la vista padre cuando el usuario pulsa "Ver Perfil" o "Contactar".
+-->
 <script setup lang="ts">
 import type { Paseador } from '../../types/paseador'
 
+// Propiedad de entrada (Props): recibe el objeto completo del paseador/cuidador a mostrar
 defineProps<{
   paseador: Paseador
 }>()
 
+// Eventos personalizados (Emits): comunica al componente padre (`PaseadoresView`) la acción elegida por el usuario
 const emit = defineEmits<{
   (e: 'contactar', paseador: Paseador): void
   (e: 'ver-perfil', paseador: Paseador): void
@@ -18,6 +31,7 @@ export default {
 </script>
 
 <template>
+  <!-- Contenedor principal de la tarjeta: cambia su estilo de fondo según si el rol es 'walker' (naranja) o 'caregiver' (blanco) -->
   <article
     :class="[
       'group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg',
@@ -27,6 +41,7 @@ export default {
 
     <!-- Foto de Perfil + Calificación flotante -->
     <div class="relative h-72 sm:h-80 overflow-hidden bg-[--color-line]">
+      <!-- Si la imagen falla al cargar (@error), se reemplaza automáticamente por un avatar de respaldo -->
       <img
         :src="paseador.foto"
         :alt="paseador.nombre"
@@ -98,7 +113,7 @@ export default {
           </div>
         </div>
 
-        <!-- Biografía corta -->
+        <!-- Biografía corta (truncada a 3 líneas con line-clamp-3) -->
         <p
           :class="[
             'mb-4 line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed',
@@ -108,7 +123,7 @@ export default {
           {{ paseador.biografia }}
         </p>
 
-        <!-- Insignias -->
+        <!-- Insignias: muestra hasta 3 certificaciones/insignias y un contador (+N) si tiene más -->
         <div class="mb-4 flex min-h-7 flex-wrap gap-1.5">
           <span
             v-for="(badge, index) in paseador.insignias.slice(0, 3)"
@@ -130,7 +145,7 @@ export default {
         </div>
       </div>
 
-      <!-- Botones de acción -->
+      <!-- Botones de acción: emiten los eventos 'ver-perfil' y 'contactar' hacia PaseadoresView -->
       <div
         :class="[
           'flex gap-2 border-t pt-5',

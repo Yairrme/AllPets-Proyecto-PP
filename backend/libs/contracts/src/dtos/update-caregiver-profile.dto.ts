@@ -21,6 +21,12 @@ const UPLOAD_PATH_REGEX =
   /^\/uploads\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp|gif)$/i;
 const UPLOAD_PATH_MESSAGE = 'Ruta de imagen no válida.';
 
+/**
+ * DTO para actualizar el perfil profesional de un paseador o cuidador
+ * (`PUT /users/:userId/caregiver-profile`).
+ * Todos los campos son opcionales para permitir que el trabajador edite
+ * secciones individuales desde su panel o durante el onboarding.
+ */
 export class UpdateCaregiverProfileDto {
   @ApiPropertyOptional({
     example:

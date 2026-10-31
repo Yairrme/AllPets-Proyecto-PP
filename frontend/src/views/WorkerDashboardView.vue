@@ -1,31 +1,60 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/WorkerDashboardView.vue
+  ROL EN LA ARQUITECTURA: Panel de Autogestión (Dashboard) del Trabajador.
+  ============================================================================
+  Descripción general:
+  Centro de control privado para usuarios con rol `'walker'` (Paseador) o `'caregiver'` (Cuidador).
+  Está organizado en 4 pestañas interactivas (`activeTab`):
+  1. `perfil`: Visualización y edición de datos personales, biografía, tarifa, experiencia, servicios y disponibilidad.
+  2. `certificaciones`: Alta/baja de permisos municipales o cursos y subida de comprobantes fotográficos.
+  3. `galeria`: Subida múltiple y visualización de fotos de paseos/cuidados.
+  4. `resenas`: Consulta de calificaciones y comentarios dejados por los clientes.
+-->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 
+// Stores de Pinia para autenticación y operaciones sobre el perfil profesional
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 
 const API_URL = 'http://localhost:3000' // Para cargar imágenes
 
+// Estado reactivo que controla qué pestaña del panel se muestra ('perfil' | 'certificaciones' | 'galeria' | 'resenas')
 const activeTab = ref('perfil')
 const isLoading = ref(true)
+// Estados para la subida de imágenes a la galería de trabajos
 const isUploadingGallery = ref(false)
 const galleryFiles = ref<File[]>([])
 const galleryPreviewUrls = ref<string[]>([])
 
+/**
+ * Convierte una ruta relativa de imagen (`/uploads/...`) en una URL absoluta apuntando al API Gateway.
+ */
 const getImageUrl = (path: string) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return `${API_URL}${path}`
 }
 
+/**
+ * Obtiene el nombre legible del cliente que dejó una reseña o genera un identificador corto de respaldo.
+ */
 const getReviewerLabel = (review: any) => {
   if (review.reviewer_id?.name) return review.reviewer_id.name
   const reviewerId = review.reviewer_id?._id || review.reviewer_id
   return `Cliente #${String(reviewerId).substring(0, 6)}`
 }
 
+/**
+ * Al montar el panel:
+ * Recupera la sesión local y lanza en paralelo (`Promise.all`) tres peticiones al API Gateway:
+ * 1. Datos de usuario (`fetchUserById`)
+ * 2. Perfil profesional de cuidador/paseador (`fetchCaregiverProfile`)
+ * 3. Reseñas recibidas (`fetchReviews`)
+ */
 onMounted(async () => {
   authStore.loadUserFromStorage()
   if (authStore.user) {
@@ -50,6 +79,9 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Procesa la selección de archivos para la galería y genera URLs temporales de previsualización.
+ */
 const handleGalleryFiles = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -61,6 +93,9 @@ const handleGalleryFiles = (e: Event) => {
   }
 }
 
+/**
+ * Sube las fotos seleccionadas de la galería al backend (`POST /users/:id/caregiver-profile/gallery`).
+ */
 const uploadGallery = async () => {
   if (galleryFiles.value.length === 0) return
   
@@ -79,6 +114,7 @@ const uploadGallery = async () => {
   }
 }
 
+// Estados reactivos para la edición del perfil y la gestión de certificaciones/comprobantes
 const isEditingProfile = ref(false)
 const isSavingProfile = ref(false)
 const profileSuccessMsg = ref('')
@@ -98,6 +134,7 @@ const isUploadingCertDocs = ref(false)
 const certDocFiles = ref<File[]>([])
 const certDocPreviewUrls = ref<string[]>([])
 
+// Modelo reactivo del formulario de edición en la pestaña "Mi Perfil"
 const editFormData = ref({
   name: '',
   city: 'Cipolletti',
@@ -111,6 +148,9 @@ const editFormData = ref({
   certifications: [] as string[],
 })
 
+/**
+ * Activa o desactiva un tamaño de mascota dentro del formulario de edición.
+ */
 const toggleAcceptedSize = (size: string) => {
   if (editFormData.value.accepted_sizes.includes(size)) {
     editFormData.value.accepted_sizes = editFormData.value.accepted_sizes.filter((s) => s !== size)
@@ -119,6 +159,9 @@ const toggleAcceptedSize = (size: string) => {
   }
 }
 
+/**
+ * Agrega o quita una certificación rápida y persiste el cambio inmediatamente en el backend.
+ */
 const toggleCertificationInProfile = async (cert: string) => {
   const current: string[] = Array.isArray(profileStore.caregiverProfile?.certifications)
     ? [...profileStore.caregiverProfile.certifications]
@@ -129,6 +172,9 @@ const toggleCertificationInProfile = async (cert: string) => {
   await persistCertifications(updated)
 }
 
+/**
+ * Añade una certificación personalizada ingresada por teclado y la guarda en el backend.
+ */
 const addCustomCertification = async () => {
   const val = newCustomCertification.value.trim()
   if (!val) return
@@ -141,6 +187,9 @@ const addCustomCertification = async () => {
   newCustomCertification.value = ''
 }
 
+/**
+ * Elimina una certificación activa del perfil y actualiza el backend.
+ */
 const removeCertification = async (cert: string) => {
   const current: string[] = Array.isArray(profileStore.caregiverProfile?.certifications)
     ? [...profileStore.caregiverProfile.certifications]
@@ -148,6 +197,9 @@ const removeCertification = async (cert: string) => {
   await persistCertifications(current.filter((c) => c !== cert))
 }
 
+/**
+ * Guarda la lista actualizada de certificaciones llamando a `PUT /users/:id/caregiver-profile`.
+ */
 const persistCertifications = async (certifications: string[]) => {
   isSavingCertifications.value = true
   try {
@@ -160,6 +212,9 @@ const persistCertifications = async (certifications: string[]) => {
   }
 }
 
+/**
+ * Captura los archivos de imagen seleccionados como comprobantes de certificación y crea sus previews.
+ */
 const handleCertDocFiles = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -169,6 +224,9 @@ const handleCertDocFiles = (e: Event) => {
   }
 }
 
+/**
+ * Sube los comprobantes fotográficos de certificaciones/permisos (`POST /users/:id/caregiver-profile/certifications`).
+ */
 const uploadCertDocs = async () => {
   if (certDocFiles.value.length === 0) return
   isUploadingCertDocs.value = true
@@ -184,6 +242,9 @@ const uploadCertDocs = async () => {
   }
 }
 
+/**
+ * Elimina un documento comprobante de certificación de la lista publicada del trabajador.
+ */
 const removeCertificationDocument = async (docUrl: string) => {
   const currentDocs: string[] = Array.isArray(profileStore.caregiverProfile?.certification_documents)
     ? [...profileStore.caregiverProfile.certification_documents]
@@ -197,6 +258,9 @@ const removeCertificationDocument = async (docUrl: string) => {
   }
 }
 
+/**
+ * Abre el modo de edición de perfil precargando los valores actuales de `authStore.user` y `profileStore.caregiverProfile`.
+ */
 const startEditing = () => {
   profileSuccessMsg.value = ''
   profileErrorMsg.value = ''
@@ -219,6 +283,10 @@ const startEditing = () => {
   isEditingProfile.value = true
 }
 
+/**
+ * Guarda simultáneamente (`Promise.all`) los datos básicos de usuario (`PUT /users/:id`)
+ * y los datos profesionales (`PUT /users/:id/caregiver-profile`), sincronizando `localStorage`.
+ */
 const saveProfile = async () => {
   isSavingProfile.value = true
   profileSuccessMsg.value = ''
@@ -272,6 +340,10 @@ const saveProfile = async () => {
     isSavingProfile.value = false
   }
 }
+
+/**
+ * Sube inmediatamente una nueva foto de perfil cuando el trabajador selecciona un archivo en el modo edición.
+ */
 const handleProfileImageChange = async (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {

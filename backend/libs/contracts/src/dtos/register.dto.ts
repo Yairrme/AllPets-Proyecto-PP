@@ -18,6 +18,11 @@ export const REGISTRABLE_ROLES = [
   UserRole.CAREGIVER,
 ];
 
+/**
+ * DTO para el registro de nuevos usuarios (`POST /auth/register`).
+ * Incluye validaciones condicionales: por ejemplo, el teléfono es opcional para
+ * clientes (`client`), pero obligatorio para trabajadores (`walker` / `caregiver`).
+ */
 export class RegisterDto {
   @ApiProperty({
     example: 'Juan Pérez',
@@ -63,9 +68,11 @@ export class RegisterDto {
     description:
       'Número de teléfono (obligatorio para cuidadores y paseadores)',
   })
+  // Si el rol NO es cliente, o si siendo cliente envió un teléfono, valida tipo y longitud
   @ValidateIf((value) => value.role !== UserRole.CLIENT || value.phone != null)
   @IsString({ message: 'El teléfono debe ser texto.' })
   @MaxLength(30, { message: 'El teléfono no puede superar 30 caracteres.' })
+  // Si es paseador o cuidador, exige que el teléfono no esté vacío
   @ValidateIf((value) => value.role !== UserRole.CLIENT)
   @IsNotEmpty({
     message: 'El teléfono es obligatorio para paseadores y cuidadores.',
@@ -78,6 +85,7 @@ export class RegisterDto {
     description:
       'Rol del usuario en la plataforma (no se permite registrarse como admin)',
   })
+  // Normaliza el rol a minúsculas y sin espacios laterales antes de validarlo
   @Transform(({ value }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )

@@ -1,16 +1,33 @@
+<!--
+  ============================================================================
+  ARCHIVO: views/WorkerOnboardingView.vue
+  ROL EN LA ARQUITECTURA: Asistente Inicial (Onboarding) de Perfil Profesional.
+  ============================================================================
+  Descripción general:
+  Se muestra inmediatamente después de que un Paseador (`walker`) o Cuidador (`caregiver`)
+  crea su cuenta en `RegisterWorkerView.vue`. Le permite configurar por primera vez:
+  - Foto de perfil con previsualización instantánea.
+  - Biografía / presentación, tarifa por hora y años de experiencia.
+  - Servicios ofrecidos, tamaños de mascota aceptados, certificaciones y días disponibles.
+  Al guardar, sube la imagen y actualiza el perfil mediante `useProfileStore`, redirigiendo
+  finalmente a su panel de control (`/mi-panel`).
+-->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 
+// Instancias de router y stores de Pinia
 const router = useRouter()
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 
+// Estados de carga y error para el envío del formulario
 const isLoading = ref(false)
 const errorMsg = ref('')
 
+// Estados reactivos para los campos del perfil profesional del trabajador
 const bio = ref('')
 const services = ref<string[]>([])
 const availability = ref<string[]>([])
@@ -19,6 +36,7 @@ const experienceYears = ref<number>(1)
 const acceptedSizes = ref<string[]>(['pequeño', 'mediano', 'grande'])
 const certifications = ref<string[]>([])
 const customCertification = ref('')
+// Archivo de imagen seleccionado y su URL temporal (blob:) para previsualizar en pantalla
 const profileImage = ref<File | null>(null)
 const profileImagePreview = ref<string | null>(null)
 
@@ -32,12 +50,17 @@ const presetCertifications = [
   'Adiestramiento Canino',
 ]
 
+// Verificación al montar: si no hay sesión activa, redirige a Login
 onMounted(async () => {
   if (!authStore.user) {
     router.push('/login')
   }
 })
 
+/**
+ * Captura el archivo de imagen seleccionado por el usuario y genera una URL
+ * temporal con `URL.createObjectURL` para mostrar la vista previa circular.
+ */
 const handleImageChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
@@ -52,6 +75,9 @@ const handleImageChange = (e: Event) => {
   profileImagePreview.value = URL.createObjectURL(file)
 }
 
+/**
+ * Agrega o quita un servicio ('Paseo', 'Cuidado en casa', 'Visitas a domicilio') del arreglo reactivo `services`.
+ */
 const toggleService = (service: string) => {
   if (services.value.includes(service)) {
     services.value = services.value.filter(s => s !== service)
@@ -60,6 +86,9 @@ const toggleService = (service: string) => {
   }
 }
 
+/**
+ * Agrega o quita un día de la semana dentro del arreglo `availability`.
+ */
 const toggleDay = (day: string) => {
   if (availability.value.includes(day)) {
     availability.value = availability.value.filter(d => d !== day)
@@ -68,6 +97,9 @@ const toggleDay = (day: string) => {
   }
 }
 
+/**
+ * Agrega o quita un tamaño de mascota ('pequeño', 'mediano', 'grande') del arreglo `acceptedSizes`.
+ */
 const toggleSize = (size: string) => {
   if (acceptedSizes.value.includes(size)) {
     acceptedSizes.value = acceptedSizes.value.filter(s => s !== size)
@@ -76,6 +108,9 @@ const toggleSize = (size: string) => {
   }
 }
 
+/**
+ * Agrega o quita una certificación predefinida o personalizada dentro de `certifications`.
+ */
 const toggleCertification = (cert: string) => {
   if (certifications.value.includes(cert)) {
     certifications.value = certifications.value.filter(c => c !== cert)
@@ -84,6 +119,9 @@ const toggleCertification = (cert: string) => {
   }
 }
 
+/**
+ * Añade una certificación o permiso municipal escrito manualmente por el trabajador.
+ */
 const addCustomCert = () => {
   const val = customCertification.value.trim()
   if (val && !certifications.value.includes(val)) {
@@ -92,6 +130,12 @@ const addCustomCert = () => {
   customCertification.value = ''
 }
 
+/**
+ * Envía toda la configuración inicial del perfil profesional al API Gateway:
+ * 1. Si seleccionó foto, la sube mediante `POST /users/:id/caregiver-profile/image`.
+ * 2. Guarda los datos del perfil mediante `PUT /users/:id/caregiver-profile`.
+ * 3. Redirige al panel de autogestión `/mi-panel`.
+ */
 const handleSaveProfile = async () => {
   isLoading.value = true
   errorMsg.value = ''
@@ -125,14 +169,17 @@ const handleSaveProfile = async () => {
 </script>
 
 <template>
+  <!-- Contenedor principal centrado con tarjeta de formulario de Onboarding -->
   <div class="min-h-screen bg-gray-50 text-gray-900 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
     <div class="max-w-2xl w-full bg-white text-gray-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100">
       
+      <!-- Encabezado de bienvenida al trabajador -->
       <div class="bg-indigo-600 px-8 py-6 text-white text-center">
         <h2 class="text-2xl font-bold">Completa tu perfil profesional</h2>
         <p class="mt-2 text-indigo-100 text-sm">Ayuda a los dueños de mascotas a conocerte mejor para que confíen en tus servicios.</p>
       </div>
       
+      <!-- Formulario conectado a handleSaveProfile -->
       <form class="px-8 py-8 space-y-8" @submit.prevent="handleSaveProfile">
         
         <!-- Sección de Foto -->
@@ -256,10 +303,12 @@ const handleSaveProfile = async () => {
           </div>
         </div>
 
+        <!-- Mensaje de error si falla el guardado -->
         <div v-if="errorMsg" class="text-red-600 text-sm text-center bg-red-50 p-3 rounded border border-red-200">
           {{ errorMsg }}
         </div>
 
+        <!-- Botón de acción final -->
         <div class="pt-4">
           <button type="submit" :disabled="isLoading"
             class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all">

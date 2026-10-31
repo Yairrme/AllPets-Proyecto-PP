@@ -3,6 +3,12 @@ import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { ValidationPipe } from '@nestjs/common';
 import { CoreUserServiceModule } from './core-user-service.module';
 
+/**
+ * Punto de entrada del microservicio `core-user-service`.
+ * A diferencia del API Gateway, NO levanta un servidor HTTP público:
+ * se instancia como un microservicio puro (`createMicroservice`) que escucha
+ * mensajes internos por el protocolo TCP en el puerto 3001.
+ */
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     CoreUserServiceModule,
@@ -15,7 +21,7 @@ async function bootstrap() {
     },
   );
 
-  // Habilitar validaciones de DTO globales
+  // Habilitar validaciones de DTO globales también dentro del microservicio (defensa en profundidad)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

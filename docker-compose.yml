@@ -1,15 +1,22 @@
+# ============================================================================
+# DOCKER COMPOSE - INFRAESTRUCTURA DE DATOS DE ALL PETS
+# ============================================================================
+# Levanta los servicios de persistencia y caché necesarios para que los
+# microservicios del backend funcionen en el entorno local.
+# Comando para iniciar: docker compose up -d
+# ============================================================================
 services:
   # Base de datos MongoDB para los microservicios (Users DB, Market DB)
   mongo:
     image: mongo:7.0
     container_name: allpets_mongodb
-    restart: always
+    restart: always # Se reinicia automáticamente si el contenedor cae
     ports:
-      - "27017:27017"
+      - "27017:27017" # Expone el puerto estándar de MongoDB al host local
     volumes:
-      - mongo_data:/data/db
+      - mongo_data:/data/db # Persiste las colecciones aunque se apague el contenedor
     environment:
-      - MONGO_INITDB_DATABASE=allpets_users
+      - MONGO_INITDB_DATABASE=allpets_users # Base de datos inicial por defecto
 
   # Cache y geolocalización en tiempo real (Reservas y GPS de paseadores)
   redis:
@@ -17,10 +24,11 @@ services:
     container_name: allpets_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6379:6379" # Puerto estándar de Redis
     volumes:
       - redis_data:/data
 
+# Volúmenes nombrados administrados por Docker para no perder datos entre reinicios
 volumes:
   mongo_data:
     driver: local

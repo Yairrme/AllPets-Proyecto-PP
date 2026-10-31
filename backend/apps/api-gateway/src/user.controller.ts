@@ -48,6 +48,11 @@ import { imageUploadOptions as multerOptions } from './uploads/upload-options';
 /** Límite para endpoints de subida: 10 peticiones por minuto por IP */
 const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
+/**
+ * Controlador protegido de Usuarios, Perfiles de Cuidador y Reseñas (`UserController`).
+ * Todas las rutas de este controlador exigen un token JWT válido (`JwtAuthGuard`)
+ * y verifican permisos de rol (`RolesGuard`) y propiedad del recurso (`assertCanManageUser` / `OwnerOrAdminGuard`).
+ */
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
 @Controller()
@@ -478,6 +483,10 @@ export class UserController {
     }
   }
 
+  /**
+   * Verifica que el usuario autenticado en el JWT (`request.user.sub`) coincida con el
+   * `userId` que intenta consultar o editar, a menos que tenga rol `ADMIN`.
+   */
   private assertCanManageUser(
     userId: string,
     request: AuthenticatedRequest,

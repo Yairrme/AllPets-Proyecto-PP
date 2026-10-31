@@ -12,6 +12,11 @@ import { PaginationDto } from 'y/contracts';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
+/**
+ * Controlador público de Cuidadores y Paseadores (`/caregivers`).
+ * No requiere autenticación JWT para que cualquier visitante pueda explorar el catálogo,
+ * consultar perfiles detallados (tarifas, fotos, certificaciones) y leer reseñas.
+ */
 @ApiTags('Caregivers')
 // Límite más amplio: el listado público pide el perfil de cada paseador.
 // TODO: devolver los perfiles unidos en /caregivers para evitar N+1 requests.
@@ -22,6 +27,7 @@ export class PublicCaregiversController {
     @Inject('USER_SERVICE') private readonly userServiceClient: ClientProxy,
   ) {}
 
+  /** Lista todos los usuarios con rol `walker` o `caregiver` de forma paginada (sin exponer su email) */
   @Get()
   @ApiOperation({
     summary: 'Listar cuidadores y paseadores activos (Paginado)',
@@ -39,6 +45,7 @@ export class PublicCaregiversController {
     }
   }
 
+  /** Obtiene el perfil profesional (`CaregiverProfile`) asociado al `userId` de un trabajador */
   @Get(':userId/profile')
   @ApiOperation({ summary: 'Obtener perfil público de un cuidador' })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
@@ -58,6 +65,7 @@ export class PublicCaregiversController {
     }
   }
 
+  /** Obtiene las reseñas y calificaciones públicas recibidas por un cuidador o paseador */
   @Get(':caregiverId/reviews')
   @ApiOperation({ summary: 'Obtener reseñas públicas de un cuidador' })
   @ApiParam({ name: 'caregiverId', description: 'ID del cuidador' })

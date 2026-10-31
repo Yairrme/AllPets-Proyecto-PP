@@ -1,35 +1,61 @@
+<!--
+  ============================================================================
+  ARCHIVO: App.vue
+  ROL EN LA ARQUITECTURA: Componente Raíz (Layout Principal) de la aplicación.
+  ============================================================================
+  Descripción general:
+  Define la estructura visual base que envuelve a todas las vistas del sistema:
+  1. Barra de navegación superior (Navbar) adaptativa según el estado de sesión y rol.
+  2. Contenedor dinámico `<RouterView>` con transiciones suaves entre pantallas.
+  3. Pie de página (Footer) institucional.
+  Además, gestiona la sincronización del scroll entre las secciones "Explorar Paseadores"
+  y "Cómo funciona" (#beneficios) dentro de la vista principal.
+-->
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { RouterView, RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import logo from './assets/logo.png'
 
+// Instancias del enrutador para navegar programáticamente y leer la ruta/hash actual
 const router = useRouter()
 const route = useRoute()
+
+// Store de autenticación para conocer si hay un usuario logueado y cuál es su rol
 const authStore = useAuthStore()
 
+// Estado reactivo que indica qué pestaña de la barra de navegación está activa ('explorar' o 'beneficios')
 const activeSection = ref<'explorar' | 'beneficios'>('explorar')
+// Bandera auxiliar para evitar que el listener de scroll sobrescriba la sección activa mientras se hace un scroll suave programático
 let isProgrammaticScroll = false
 let scrollTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Propiedad computada: determina si el usuario autenticado es un trabajador (paseador o cuidador)
 const isWorker = computed(() => {
   return authStore.user?.role === 'walker' || authStore.user?.role === 'caregiver'
 })
 
+// Propiedad computada: indica si el botón "Explorar Paseadores" debe mostrarse resaltado
 const isExplorarActive = computed(() => {
   return route.path === '/paseadores' && activeSection.value === 'explorar'
 })
 
+// Propiedad computada: indica si el botón "Cómo funciona" debe mostrarse resaltado
 const isBeneficiosActive = computed(() => {
   return route.path === '/paseadores' && activeSection.value === 'beneficios'
 })
 
+// Propiedad computada: traduce el rol interno en inglés a una etiqueta legible en español para el badge del header
 const userRoleBadge = computed(() => {
   if (authStore.user?.role === 'walker') return 'Paseador'
   if (authStore.user?.role === 'caregiver') return 'Cuidador'
   return 'Cliente'
 })
 
+/**
+ * Detecta la posición del scroll en la ventana para cambiar automáticamente
+ * el indicador activo del menú entre "Explorar Paseadores" y "Cómo funciona".
+ */
 function updateSectionOnScroll() {
   if (isProgrammaticScroll || route.path !== '/paseadores') return
   const el = document.getElementById('beneficios')
@@ -43,6 +69,10 @@ function updateSectionOnScroll() {
   }
 }
 
+/**
+ * Bloquea temporalmente el detector de scroll manual mientras dura la animación
+ * de desplazamiento suave (750 ms) iniciada al hacer clic en los botones del navbar.
+ */
 function lockProgrammaticScroll(section: 'explorar' | 'beneficios') {
   activeSection.value = section
   isProgrammaticScroll = true
@@ -52,6 +82,9 @@ function lockProgrammaticScroll(section: 'explorar' | 'beneficios') {
   }, 750)
 }
 
+/**
+ * Navega a la parte superior de la vista `/paseadores` (sección Explorar).
+ */
 async function goToExplorar() {
   lockProgrammaticScroll('explorar')
   if (route.path !== '/paseadores' || route.hash) {
@@ -60,6 +93,10 @@ async function goToExplorar() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+/**
+ * Navega hacia la vista `/paseadores#beneficios` y desplaza suavemente la pantalla
+ * hasta el bloque informativo "Cómo funciona".
+ */
 async function goToBeneficios() {
   lockProgrammaticScroll('beneficios')
   if (route.path !== '/paseadores' || route.hash !== '#beneficios') {
@@ -71,6 +108,7 @@ async function goToBeneficios() {
   }
 }
 
+// Observador (watch) que sincroniza la pestaña activa cuando cambia la ruta o el hash en la URL
 watch(
   () => [route.path, route.hash],
   ([newPath, newHash]) => {
@@ -81,16 +119,21 @@ watch(
   { immediate: true },
 )
 
+// Ciclo de vida onMounted: restaura los datos del usuario desde localStorage y registra el evento de scroll
 onMounted(() => {
   authStore.loadUserFromStorage()
   window.addEventListener('scroll', updateSectionOnScroll, { passive: true })
 })
 
+// Ciclo de vida onUnmounted: limpia el listener de scroll y el timeout pendiente para evitar fugas de memoria
 onUnmounted(() => {
   window.removeEventListener('scroll', updateSectionOnScroll)
   if (scrollTimeout) clearTimeout(scrollTimeout)
 })
 
+/**
+ * Cierra la sesión actual limpiando el store/localStorage y redirige a la pantalla de Login.
+ */
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
@@ -98,12 +141,13 @@ const handleLogout = () => {
 </script>
 
 <template>
+  <!-- Contenedor general de pantalla completa con diseño en columna (Header - Main - Footer) -->
   <div class="min-h-screen flex flex-col bg-stone-50/70 font-sans text-stone-800">
     <!-- Navbar Superior Minimalista y Elegante -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-xs transition-colors">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-28 flex items-center justify-between">
         
-        <!-- Logo AllPets -->
+        <!-- Logo AllPets: redirige a '/mi-panel' si es trabajador o a '/paseadores' si es cliente/invitado -->
         <div class="flex items-center gap-4">
           <router-link :to="isWorker ? '/mi-panel' : '/paseadores'" class="flex items-center gap-4 group">
             <div class="w-20 h-20 rounded-2xl bg-stone-100 p-1.5 flex items-center justify-center border border-stone-200/70 group-hover:border-amber-500/50 transition-all shadow-xs shrink-0">
@@ -153,7 +197,7 @@ const handleLogout = () => {
           </button>
         </nav>
 
-        <!-- Perfil / CTA derecho -->
+        <!-- Perfil / CTA derecho: Muestra avatar y accesos rápidos si está autenticado, o botones Login/Registro si es invitado -->
         <div class="flex items-center gap-3">
           <div class="hidden sm:flex items-center gap-4 pl-4 border-l border-stone-200">
             <template v-if="authStore.isAuthenticated">

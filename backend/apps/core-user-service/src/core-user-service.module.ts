@@ -12,6 +12,12 @@ import {
 import { Review, ReviewSchema } from './schemas/review.schema';
 import { validateEnvironment } from 'y/common';
 
+/**
+ * Módulo principal del microservicio `core-user-service`.
+ * Establece la conexión con MongoDB (`MONGO_URI_USERS`), registra los 3 esquemas
+ * de Mongoose (`User`, `CaregiverProfile`, `Review`) y configura `JwtModule` para
+ * firmar los tokens JWT durante el login.
+ */
 @Module({
   imports: [
     // Soporte para variables de entorno (.env)
