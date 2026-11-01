@@ -1,6 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsInt,
+  IsMongoId,
   IsNumber,
   IsString,
   Max,
@@ -48,4 +49,21 @@ export class CreateProductDto {
   @Min(0)
   @Max(1_000_000)
   stock: number;
+}
+
+/**
+ * Edición parcial (PATCH): los mismos 7 campos y las mismas validaciones que
+ * CreateProductDto, pero todos opcionales. PartialType hereda las reglas de
+ * class-validator, así que no se duplican.
+ */
+export class UpdateProductDto extends PartialType(CreateProductDto) {}
+
+/** Valida el `:id` de la ruta (GET / PATCH / DELETE /products/:id). */
+export class ProductIdParamDto {
+  @ApiProperty({
+    example: '64b7f0c2a1d3e4f5a6b7c8da',
+    description: 'ID del producto',
+  })
+  @IsMongoId()
+  id: string;
 }

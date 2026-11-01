@@ -1,13 +1,14 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import PaseadoresView from '../views/PaseadoresView.vue'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import RegisterWorkerView from '../views/RegisterWorkerView.vue'
-import WorkerOnboardingView from '../views/WorkerOnboardingView.vue'
-import WorkerDashboardView from '../views/WorkerDashboardView.vue'
-import ClientProfileView from '../views/ClientProfileView.vue'
-import ShopView from '../views/ShopView.vue'
-import CartView from '../views/CartView.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import PaseadoresView from "../views/PaseadoresView.vue";
+import LoginView from "../views/LoginView.vue";
+import RegisterView from "../views/RegisterView.vue";
+import RegisterWorkerView from "../views/RegisterWorkerView.vue";
+import WorkerOnboardingView from "../views/WorkerOnboardingView.vue";
+import WorkerDashboardView from "../views/WorkerDashboardView.vue";
+import ClientProfileView from "../views/ClientProfileView.vue";
+import ShopView from "../views/ShopView.vue";
+import CartView from "../views/CartView.vue";
+import AdminProductsView from "../views/AdminProductsView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -15,99 +16,132 @@ const router = createRouter({
     return new Promise((resolve) => {
       setTimeout(() => {
         if (to.hash) {
-          resolve({ el: to.hash, behavior: 'smooth' })
+          resolve({ el: to.hash, behavior: "smooth" });
         } else {
-          resolve({ top: 0, behavior: 'smooth' })
+          resolve({ top: 0, behavior: "smooth" });
         }
-      }, 300)
-    })
+      }, 300);
+    });
   },
   routes: [
     {
-      path: '/',
-      redirect: '/paseadores',
+      path: "/",
+      redirect: "/paseadores",
     },
     {
-      path: '/paseadores',
-      name: 'paseadores',
+      path: "/paseadores",
+      name: "paseadores",
       component: PaseadoresView,
     },
     {
-      path: '/login',
-      name: 'login',
+      path: "/login",
+      name: "login",
       component: LoginView,
     },
     {
-      path: '/register',
-      name: 'register',
+      path: "/register",
+      name: "register",
       component: RegisterView,
     },
     {
-      path: '/trabaja-con-nosotros',
-      name: 'register-worker',
+      path: "/trabaja-con-nosotros",
+      name: "register-worker",
       component: RegisterWorkerView,
     },
     {
-      path: '/onboarding-trabajador',
-      name: 'onboarding-worker',
+      path: "/onboarding-trabajador",
+      name: "onboarding-worker",
       component: WorkerOnboardingView,
     },
     {
-      path: '/mi-panel',
-      name: 'worker-dashboard',
+      path: "/mi-panel",
+      name: "worker-dashboard",
       component: WorkerDashboardView,
     },
     {
-      path: '/mi-perfil',
-      name: 'client-profile',
+      path: "/mi-perfil",
+      name: "client-profile",
       component: ClientProfileView,
     },
     {
-      path: '/tienda',
-      name: 'shop',
+      path: "/tienda",
+      name: "shop",
       component: ShopView,
     },
     {
-      path: '/carrito',
-      name: 'cart',
+      path: "/carrito",
+      name: "cart",
       component: CartView,
     },
+    {
+      path: "/admin/productos",
+      name: "admin-products",
+      component: AdminProductsView,
+    },
   ],
-})
+});
 
 router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('token')
-  const storedUser = localStorage.getItem('user')
-  const user = storedUser ? JSON.parse(storedUser) : null
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
 
-  if ((to.name === 'login' || to.name === 'register') && token && user) {
-    next(user.role === 'client' ? '/paseadores' : '/mi-panel')
-    return
+  if ((to.name === "login" || to.name === "register") && token && user) {
+    if (user.role === "admin") {
+      next("/admin/productos");
+    } else {
+      next(user.role === "client" ? "/paseadores" : "/mi-panel");
+    }
+    return;
   }
 
-  if (to.name === 'worker-dashboard' && (!token || !user || !['walker', 'caregiver'].includes(user.role))) {
-    next('/login')
-    return
+  // El admin no tiene panel de trabajador: se lo manda a su sección.
+  if (to.name === "worker-dashboard" && token && user?.role === "admin") {
+    next("/admin/productos");
+    return;
   }
 
-  if (to.name === 'onboarding-worker' && (!token || !user || !['walker', 'caregiver'].includes(user.role))) {
-    next('/trabaja-con-nosotros')
-    return
+  if (
+    to.name === "worker-dashboard" &&
+    (!token || !user || !["walker", "caregiver"].includes(user.role))
+  ) {
+    next("/login");
+    return;
+  }
+
+  if (
+    to.name === "onboarding-worker" &&
+    (!token || !user || !["walker", "caregiver"].includes(user.role))
+  ) {
+    next("/trabaja-con-nosotros");
+    return;
   }
 
   // Proteger la vista de cliente para que solo accedan usuarios logueados
-  if (to.name === 'client-profile' && (!token || !user)) {
-    next('/login')
-    return
+  if (to.name === "client-profile" && (!token || !user)) {
+    next("/login");
+    return;
   }
 
   // El carrito es personal: sin sesión se manda a iniciar sesión.
-  if (to.name === 'cart' && (!token || !user)) {
-    next('/login')
-    return
+  if (to.name === "cart" && (!token || !user)) {
+    next("/login");
+    return;
   }
 
-  next()
-})
+  // Administración de productos: solo ADMIN (el backend lo vuelve a validar).
+  if (to.name === "admin-products") {
+    if (!token || !user) {
+      next("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      next("/paseadores");
+      return;
+    }
+  }
 
-export default router
+  next();
+});
+
+export default router;
