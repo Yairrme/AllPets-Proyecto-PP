@@ -11,10 +11,13 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { Buffer } from 'node:buffer';
+import { RpcException } from '@nestjs/microservices';
 import {
+  AdminCaregiversQueryDto,
   CreateReviewDto,
   LoginDto,
   PaginationDto,
+  ProfileStatus,
   RegisterDto,
   UpdateCaregiverProfileDto,
   UpdateUserDto,
@@ -91,6 +94,7 @@ export class CoreUserService {
         availability: [],
         certifications: [],
         certification_documents: [],
+        status: ProfileStatus.PENDING,
       });
       await caregiverProfile.save();
     }
@@ -283,7 +287,12 @@ export class CoreUserService {
   }> {
     const { page, limit } = pagination;
     const caregiverRoles = [UserRole.WALKER, UserRole.CAREGIVER];
-    const filter = { role: { $in: caregiverRoles } };
+    // Solo los perfiles aprobados son públicos (SCRUM-112).
+    const hiddenIds = await this.userIdsWithStatus([
+      ProfileStatus.PENDING,
+      ProfileStatus.REJECTED,
+    ]);
+    const filter = { role: { $in: caregiverRoles }, _id: { $nin: hiddenIds } };
     const [users, total] = await Promise.all([
       this.userModel
         .find(filter)
@@ -482,6 +491,131 @@ export class CoreUserService {
         { $set: { rating_avg: avg, total_reviews: reviews.length } },
       )
       .exec();
+  }
+  // 6. ADMINISTRACIÓN DE PASEADORES Y CUIDADORES (SCRUM-112)
+  async getCaregiversForAdmin(query: AdminCaregiversQueryDto): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const { page, limit, status } = query;
+    const caregiverRoles = [UserRole.WALKER, UserRole.CAREGIVER];
+
+    // Sin campo status = perfil anterior a SCRUM-112 = aprobado.
+    const idFilter =
+      status === ProfileStatus.APPROVED
+        ? {
+            _id: {
+              $nin: await this.userIdsWithStatus([
+                ProfileStatus.PENDING,
+                ProfileStatus.REJECTED,
+              ]),
+            },
+          }
+        : status
+          ? { _id: { $in: await this.userIdsWithStatus([status]) } }
+          : {};
+    const filter = { role: { $in: caregiverRoles }, ...idFilter };
+
+    const [users, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .sort({ created_at: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    const profiles = await this.profileModel
+      .find({ user_id: { $in: users.map((user) => user._id) } })
+      .select('user_id status')
+      .exec();
+    const statusByUser = new Map(
+      profiles.map((profile) => [String(profile.user_id), profile.status]),
+    );
+
+    const data = await Promise.all(
+      users.map(async (user) => ({
+        ...(await this.toPublicUser(user)),
+        profile_status:
+          statusByUser.get(user._id.toString()) ?? ProfileStatus.APPROVED,
+      })),
+    );
+
+    return {
+      data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getCaregiverForAdmin(
+    userId: string,
+  ): Promise<{ user: any; profile: CaregiverProfile }> {
+    const user = await this.requireCaregiverUser(userId);
+    const profile = await this.profileModel
+      .findOne({ user_id: user._id })
+      .exec();
+    if (!profile) {
+      throw new RpcException({
+        status: 404,
+        message: 'Perfil de cuidador no encontrado',
+      });
+    }
+    return { user: await this.toPublicUser(user), profile };
+  }
+
+  async setCaregiverStatus(
+    userId: string,
+    status: ProfileStatus,
+  ): Promise<CaregiverProfile> {
+    const user = await this.requireCaregiverUser(userId);
+    const profile = await this.profileModel
+      .findOneAndUpdate(
+        { user_id: user._id },
+        { $set: { status } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!profile) {
+      throw new RpcException({
+        status: 404,
+        message: 'Perfil de cuidador no encontrado',
+      });
+    }
+    return profile;
+  }
+
+  /** Usuario con rol paseador/cuidador, o 404 (sale con su código por TCP). */
+  private async requireCaregiverUser(userId: string): Promise<UserDocument> {
+    const user = Types.ObjectId.isValid(userId)
+      ? await this.userModel.findById(userId).exec()
+      : null;
+    if (
+      !user ||
+      (user.role !== UserRole.WALKER && user.role !== UserRole.CAREGIVER)
+    ) {
+      throw new RpcException({
+        status: 404,
+        message: 'Paseador o cuidador no encontrado',
+      });
+    }
+    return user;
+  }
+
+  /** IDs de usuario cuyo perfil tiene alguno de los estados indicados. */
+  private async userIdsWithStatus(
+    statuses: ProfileStatus[],
+  ): Promise<Types.ObjectId[]> {
+    const profiles = await this.profileModel
+      .find({ status: { $in: statuses } })
+      .select('user_id')
+      .exec();
+    return profiles.map((profile) => profile.user_id as Types.ObjectId);
   }
 
   private async toPublicUser(

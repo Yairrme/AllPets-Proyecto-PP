@@ -4,10 +4,12 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CoreUserService } from './core-user-service.service';
 import {
+  AdminCaregiversQueryDto,
   RegisterDto,
   LoginDto,
   CreateReviewDto,
   PaginationDto,
+  ProfileStatus,
   UpdateCaregiverProfileDto,
   UpdateUserDto,
 } from 'y/contracts';
@@ -103,5 +105,23 @@ export class CoreUserServiceController {
       data.caregiver_id,
       data.pagination,
     );
+  }
+
+  // ===== SCRUM-112: administración de paseadores y cuidadores =====
+  @MessagePattern({ cmd: 'admin_get_caregivers' })
+  async adminGetCaregivers(@Payload() query: AdminCaregiversQueryDto) {
+    return this.coreUserService.getCaregiversForAdmin(query);
+  }
+
+  @MessagePattern({ cmd: 'admin_get_caregiver' })
+  async adminGetCaregiver(@Payload() data: { user_id: string }) {
+    return this.coreUserService.getCaregiverForAdmin(data.user_id);
+  }
+
+  @MessagePattern({ cmd: 'admin_set_caregiver_status' })
+  async adminSetCaregiverStatus(
+    @Payload() data: { user_id: string; status: ProfileStatus },
+  ) {
+    return this.coreUserService.setCaregiverStatus(data.user_id, data.status);
   }
 }

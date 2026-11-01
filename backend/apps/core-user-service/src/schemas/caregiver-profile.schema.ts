@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { ProfileStatus } from 'y/contracts';
 import { User } from './user.schema';
 
 export type CaregiverProfileDocument = CaregiverProfile & Document;
@@ -55,6 +56,17 @@ export class CaregiverProfile {
 
   @Prop({ type: [String], default: [] })
   gallery_images: string[];
+
+  // SCRUM-112: estado de validación del perfil. Los perfiles creados antes de
+  // este campo no lo tienen en Mongo y se consideran aprobados (default).
+  // Los perfiles nuevos se crean como PENDING en CoreUserService.register.
+  @Prop({
+    type: String,
+    enum: ProfileStatus,
+    default: ProfileStatus.APPROVED,
+    index: true,
+  })
+  status: ProfileStatus;
 }
 
 export const CaregiverProfileSchema =

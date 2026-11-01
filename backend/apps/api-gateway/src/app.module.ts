@@ -12,6 +12,7 @@ import { RolesGuard } from './auth/roles.guard';
 import { validateEnvironment } from 'y/common';
 import { HealthController } from './health.controller';
 import { PublicCaregiversController } from './public-caregivers.controller';
+import { AdminCaregiversController } from './admin-caregivers.controller';
 import { MARKET_SERVICE } from 'y/contracts';
 import { CartController } from './market/cart.controller';
 import { MarketClient } from './market/market.client';
@@ -71,6 +72,7 @@ import { ProductsController } from './market/products.controller';
     UserController,
     HealthController,
     PublicCaregiversController,
+    AdminCaregiversController,
     ProductsController,
     CartController,
   ],

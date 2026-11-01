@@ -8,7 +8,7 @@ import WorkerDashboardView from "../views/WorkerDashboardView.vue";
 import ClientProfileView from "../views/ClientProfileView.vue";
 import ShopView from "../views/ShopView.vue";
 import CartView from "../views/CartView.vue";
-import AdminProductsView from "../views/AdminProductsView.vue";
+import AdminView from "../views/AdminView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,9 +74,14 @@ const router = createRouter({
       component: CartView,
     },
     {
+      path: "/admin",
+      name: "admin",
+      component: AdminView,
+    },
+    {
+      // Ruta anterior del CRUD de productos: ahora es una pestaña de Administración.
       path: "/admin/productos",
-      name: "admin-products",
-      component: AdminProductsView,
+      redirect: { path: "/admin", query: { seccion: "productos" } },
     },
   ],
 });
@@ -88,7 +93,7 @@ router.beforeEach((to, _from, next) => {
 
   if ((to.name === "login" || to.name === "register") && token && user) {
     if (user.role === "admin") {
-      next("/admin/productos");
+      next("/admin");
     } else {
       next(user.role === "client" ? "/paseadores" : "/mi-panel");
     }
@@ -97,7 +102,7 @@ router.beforeEach((to, _from, next) => {
 
   // El admin no tiene panel de trabajador: se lo manda a su sección.
   if (to.name === "worker-dashboard" && token && user?.role === "admin") {
-    next("/admin/productos");
+    next("/admin");
     return;
   }
 
@@ -129,8 +134,8 @@ router.beforeEach((to, _from, next) => {
     return;
   }
 
-  // Administración de productos: solo ADMIN (el backend lo vuelve a validar).
-  if (to.name === "admin-products") {
+  // Administración: solo ADMIN (el backend lo vuelve a validar en cada endpoint).
+  if (to.name === "admin") {
     if (!token || !user) {
       next("/login");
       return;

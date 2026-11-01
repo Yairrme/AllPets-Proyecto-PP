@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
+import { onMounted, computed, ref } from "vue";
 import { RouterView, RouterLink, useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
 import { useCartStore } from "./stores/cart";
@@ -33,6 +33,19 @@ const userRoleBadge = computed(() => {
   if (authStore.user?.role === "caregiver") return "Cuidador";
   return "Cliente";
 });
+
+// Tema: el script de index.html ya puso la clase "dark" en <html> si correspondía.
+const isDark = ref(document.documentElement.classList.contains("dark"));
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle("dark", isDark.value);
+  try {
+    localStorage.setItem("theme", isDark.value ? "dark" : "light");
+  } catch {
+    // Sin almacenamiento disponible: el tema igual cambia en esta sesión.
+  }
+};
 
 onMounted(() => {
   authStore.loadUserFromStorage();
@@ -154,20 +167,30 @@ const handleLogout = () => {
           </router-link>
           <router-link
             v-if="isAdmin"
-            to="/admin/productos"
+            to="/admin"
             class="relative py-1.5 transition-all duration-300"
             :class="
-              route.path === '/admin/productos'
+              route.path.startsWith('/admin')
                 ? 'text-amber-700 font-bold'
                 : 'text-stone-600 hover:text-amber-700'
             "
           >
-            Administrar productos
+            Administración
           </router-link>
         </nav>
 
         <!-- Perfil / CTA derecho -->
         <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-lg text-stone-700 hover:bg-stone-100 transition-all"
+            :aria-pressed="isDark"
+            :aria-label="isDark ? 'Activar modo claro' : 'Activar modo oscuro'"
+            :title="isDark ? 'Activar modo claro' : 'Activar modo oscuro'"
+            @click="toggleTheme"
+          >
+            {{ isDark ? "☀️" : "🌙" }}
+          </button>
           <router-link
             v-if="authStore.isAuthenticated && !isWorker"
             to="/carrito"
@@ -224,9 +247,9 @@ const handleLogout = () => {
                     >
                     <RouterLink
                       v-else-if="isAdmin"
-                      to="/admin/productos"
+                      to="/admin"
                       class="text-amber-600 hover:text-amber-800 font-medium"
-                      >Admin productos</RouterLink
+                      >Administración</RouterLink
                     >
                     <button
                       @click="handleLogout"
