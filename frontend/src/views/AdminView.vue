@@ -38,8 +38,8 @@ const section = ref<Section>(
         class="pb-3 -mb-px text-sm font-bold border-b-2 transition"
         :class="
           section === tab.key
-            ? 'border-amber-500 text-amber-700'
-            : 'border-transparent text-stone-600 hover:text-amber-700'
+            ? 'border-(--brand) text-(--header-accent)'
+            : 'border-transparent text-stone-600 hover:text-(--header-accent)'
         "
         @click="section = tab.key"
       >

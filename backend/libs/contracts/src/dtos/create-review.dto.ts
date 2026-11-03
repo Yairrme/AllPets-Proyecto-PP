@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsInt,
+  IsMongoId,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -20,7 +21,7 @@ export class CreateReviewDto {
     example: '65f1a2b3c4d5e6f7a8b9c0d1',
     description: 'ID del cuidador o paseador al que se le hace la reseña',
   })
-  @IsString()
+  @IsMongoId({ message: 'El ID del cuidador no es válido.' })
   @IsNotEmpty({ message: 'El ID del cuidador es obligatorio (caregiver_id).' })
   caregiver_id: string;
 
@@ -30,7 +31,7 @@ export class CreateReviewDto {
     maximum: 5,
     description: 'Puntuación del 1 al 5',
   })
-  @IsNumber()
+  @IsInt({ message: 'La calificación debe ser un número entero.' })
   @Min(1, { message: 'La calificación mínima es 1.' })
   @Max(5, { message: 'La calificación máxima es 5.' })
   @IsNotEmpty({ message: 'La calificación es obligatoria.' })

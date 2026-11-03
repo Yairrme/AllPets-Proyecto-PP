@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { ProfileStatus } from 'y/contracts';
+import { PET_SIZES, ProfileStatus } from 'y/contracts';
 import { User } from './user.schema';
 
 export type CaregiverProfileDocument = CaregiverProfile & Document;
@@ -38,7 +38,7 @@ export class CaregiverProfile {
 
   @Prop({
     type: [String],
-    default: ['pequeño', 'mediano', 'grande'],
+    default: [...PET_SIZES],
   })
   accepted_sizes: string[];
 
@@ -57,6 +57,11 @@ export class CaregiverProfile {
   @Prop({ type: [String], default: [] })
   gallery_images: string[];
 
+  // El propio paseador/cuidador decide si toma clientes nuevos. Los clientes
+  // lo ven como "Disponible" / "No disponible" en el directorio público.
+  @Prop({ type: Boolean, default: true })
+  is_available: boolean;
+
   // SCRUM-112: estado de validación del perfil. Los perfiles creados antes de
   // este campo no lo tienen en Mongo y se consideran aprobados (default).
   // Los perfiles nuevos se crean como PENDING en CoreUserService.register.
@@ -71,3 +76,6 @@ export class CaregiverProfile {
 
 export const CaregiverProfileSchema =
   SchemaFactory.createForClass(CaregiverProfile);
+// Filtros del directorio público.
+CaregiverProfileSchema.index({ status: 1, hourly_rate: 1 });
+CaregiverProfileSchema.index({ status: 1, rating_avg: -1 });

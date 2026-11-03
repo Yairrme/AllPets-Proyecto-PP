@@ -3,6 +3,7 @@
 export const MARKET_SERVICE = 'MARKET_SERVICE';
 
 export const MARKET_PATTERNS = {
+  HEALTH_CHECK: { cmd: 'health_check' },
   PRODUCTS_LIST: { cmd: 'products_list' },
   PRODUCTS_GET: { cmd: 'products_get' },
   PRODUCTS_CREATE: { cmd: 'products_create' },
@@ -13,4 +14,5 @@ export const MARKET_PATTERNS = {
   CART_UPDATE_ITEM: { cmd: 'cart_update_item' },
   CART_REMOVE_ITEM: { cmd: 'cart_remove_item' },
   CART_CLEAR: { cmd: 'cart_clear' },
+  CART_DELETE: { cmd: 'cart_delete' },
 } as const;

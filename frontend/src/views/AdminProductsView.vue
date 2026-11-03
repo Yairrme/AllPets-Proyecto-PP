@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
+import { toApiUrl } from "../config";
 import { useProductsStore, type ProductInput } from "../stores/products";
 import type { Product } from "../types/shop";
+import { formatARS } from "../utils/currency";
 
 interface ProductForm {
   title: string;
@@ -37,10 +39,43 @@ onMounted(() => {
   productsStore.fetchProducts();
 });
 
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(
-    value,
-  );
+const formatPrice = formatARS;
+
+// ---- Foto del producto: subida desde la PC o URL pública ----
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const isUploadingImage = ref(false);
+const imageError = ref("");
+
+const imagePreview = computed(() =>
+  form.imageUrl.trim() ? toApiUrl(form.imageUrl.trim()) : "",
+);
+
+async function handleImageFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ""; // permite volver a elegir el mismo archivo
+  if (!file) return;
+
+  imageError.value = "";
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    imageError.value = "Solo se aceptan imágenes JPG, PNG o WEBP.";
+    return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    imageError.value = "La imagen no puede superar 5 MB.";
+    return;
+  }
+
+  isUploadingImage.value = true;
+  const imageUrl = await productsStore.uploadImage(file);
+  isUploadingImage.value = false;
+  if (imageUrl) {
+    form.imageUrl = imageUrl;
+  } else {
+    imageError.value = productsStore.actionError;
+  }
+}
 
 function openCreate() {
   Object.assign(form, emptyForm());
@@ -71,6 +106,7 @@ function closeForm() {
   showForm.value = false;
   editingId.value = null;
   formError.value = "";
+  imageError.value = "";
 }
 
 /** Mismas reglas que CreateProductDto en el backend (el backend vuelve a validar). */
@@ -100,8 +136,10 @@ function validate(): string {
     return "El tipo de mascota es obligatorio (máximo 60 caracteres).";
   if (category.length === 0 || category.length > 60)
     return "La categoría es obligatoria (máximo 60 caracteres).";
-  if (imageUrl.length === 0 || imageUrl.length > 500)
-    return "La URL de la imagen es obligatoria (máximo 500 caracteres).";
+  if (imageUrl.length === 0)
+    return "Subí una foto del producto o pegá la URL de una imagen.";
+  if (imageUrl.length > 500 || !/^(https?:\/\/|\/uploads\/)/i.test(imageUrl))
+    return "La imagen debe ser una foto subida o una URL que empiece con http:// o https://.";
   if (
     form.stock === "" ||
     !Number.isInteger(stock) ||
@@ -170,7 +208,7 @@ async function confirmDelete(product: Product) {
         </p>
       </div>
       <button
-        class="rounded-xl bg-amber-500 text-white font-bold px-5 py-2.5 hover:bg-amber-600 active:scale-95 transition"
+        class="rounded-xl bg-(--brand) text-white font-bold px-5 py-2.5 hover:bg-(--brand-dark) active:scale-95 transition"
         @click="openCreate"
       >
         + Nuevo producto
@@ -208,7 +246,7 @@ async function confirmDelete(product: Product) {
           v-model="form.title"
           type="text"
           maxlength="120"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
@@ -220,7 +258,7 @@ async function confirmDelete(product: Product) {
           v-model="form.description"
           rows="3"
           maxlength="1000"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
@@ -232,7 +270,7 @@ async function confirmDelete(product: Product) {
           min="0"
           max="10000000"
           step="0.01"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
@@ -244,7 +282,7 @@ async function confirmDelete(product: Product) {
           min="0"
           max="1000000"
           step="1"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
@@ -255,7 +293,7 @@ async function confirmDelete(product: Product) {
           type="text"
           maxlength="60"
           placeholder="perro"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
@@ -266,22 +304,70 @@ async function confirmDelete(product: Product) {
           type="text"
           maxlength="60"
           placeholder="alimento"
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
         />
       </label>
 
-      <label
-        class="flex flex-col gap-1 text-sm font-semibold text-stone-700 sm:col-span-2"
-      >
-        URL de la imagen
-        <input
-          v-model="form.imageUrl"
-          type="text"
-          maxlength="500"
-          placeholder="https://..."
-          class="px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
-        />
-      </label>
+      <fieldset class="sm:col-span-2">
+        <legend class="text-sm font-semibold text-stone-700 mb-2">
+          Foto del producto
+        </legend>
+        <div class="flex flex-col sm:flex-row gap-4 items-start">
+          <div
+            class="w-32 h-32 shrink-0 rounded-xl border border-stone-200 bg-stone-100 overflow-hidden flex items-center justify-center"
+          >
+            <img
+              v-if="imagePreview"
+              :src="imagePreview"
+              alt="Vista previa de la foto"
+              class="w-full h-full object-cover"
+            />
+            <span v-else class="text-3xl text-stone-400" aria-hidden="true"
+              >🖼️</span
+            >
+          </div>
+
+          <div class="flex-1 w-full space-y-3">
+            <label
+              class="inline-flex items-center gap-2 rounded-xl border border-(--brand) text-(--header-accent) font-bold px-4 py-2 cursor-pointer hover:bg-(--header-hover) transition"
+              :class="{ 'opacity-50 pointer-events-none': isUploadingImage }"
+            >
+              {{
+                isUploadingImage
+                  ? "Subiendo..."
+                  : form.imageUrl
+                    ? "Cambiar foto"
+                    : "Subir foto"
+              }}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                class="sr-only"
+                :disabled="isUploadingImage"
+                @change="handleImageFile"
+              />
+            </label>
+            <p class="text-xs text-stone-500">JPG, PNG o WEBP de hasta 5 MB.</p>
+
+            <label
+              class="flex flex-col gap-1 text-xs font-semibold text-stone-500"
+            >
+              O pegá la URL de una imagen
+              <input
+                v-model="form.imageUrl"
+                type="text"
+                maxlength="500"
+                placeholder="https://..."
+                class="px-3 py-2 rounded-xl border border-stone-300 text-sm font-normal text-stone-800 focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)"
+              />
+            </label>
+
+            <p v-if="imageError" role="alert" class="text-sm text-red-600">
+              {{ imageError }}
+            </p>
+          </div>
+        </div>
+      </fieldset>
 
       <p
         v-if="formError"
@@ -302,8 +388,8 @@ async function confirmDelete(product: Product) {
         </button>
         <button
           type="submit"
-          class="rounded-xl bg-amber-500 text-white font-bold px-5 py-2.5 hover:bg-amber-600 active:scale-95 transition disabled:bg-stone-300 disabled:cursor-not-allowed"
-          :disabled="productsStore.isSaving"
+          class="rounded-xl bg-(--brand) text-white font-bold px-5 py-2.5 hover:bg-(--brand-dark) active:scale-95 transition disabled:bg-stone-300 disabled:cursor-not-allowed"
+          :disabled="productsStore.isSaving || isUploadingImage"
         >
           {{
             productsStore.isSaving
@@ -357,7 +443,7 @@ async function confirmDelete(product: Product) {
           <tr v-for="product in productsStore.products" :key="product._id">
             <td class="px-4 py-3">
               <img
-                :src="product.imageUrl"
+                :src="toApiUrl(product.imageUrl)"
                 :alt="product.title"
                 class="w-14 h-14 rounded-lg object-cover bg-stone-100"
               />
@@ -369,7 +455,7 @@ async function confirmDelete(product: Product) {
             <td class="px-4 py-3 text-stone-700">
               {{ product.petType }} / {{ product.category }}
             </td>
-            <td class="px-4 py-3 font-bold text-amber-700">
+            <td class="px-4 py-3 font-bold text-(--header-accent)">
               {{ formatPrice(product.price) }}
             </td>
             <td class="px-4 py-3">
@@ -402,7 +488,7 @@ async function confirmDelete(product: Product) {
               </template>
               <template v-else>
                 <button
-                  class="font-bold text-indigo-600 hover:text-indigo-800 mr-3"
+                  class="font-bold text-(--header-accent) hover:text-(--header-text) mr-3"
                   @click="openEdit(product)"
                 >
                   Editar
@@ -418,6 +504,16 @@ async function confirmDelete(product: Product) {
           </tr>
         </tbody>
       </table>
+      <div v-if="productsStore.hayMas" class="border-t border-stone-200 p-4 text-center">
+        <button
+          type="button"
+          class="text-sm font-bold underline disabled:opacity-50"
+          :disabled="productsStore.isLoadingMore"
+          @click="productsStore.fetchMore()"
+        >
+          {{ productsStore.isLoadingMore ? "Cargando..." : `Ver más (${productsStore.products.length} de ${productsStore.total})` }}
+        </button>
+      </div>
     </div>
   </section>
 </template>

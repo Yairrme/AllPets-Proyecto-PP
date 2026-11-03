@@ -1,17 +1,46 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { join } from 'path';
 import { timingSafeEqual } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
+import helmet from 'helmet';
+import { consoleLogger } from 'y/common';
+import { requestLogging } from './request-logging.middleware';
+
+/** Orígenes permitidos en desarrollo si no se configura CORS_ORIGINS. */
+const DEV_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: consoleLogger(),
+  });
+  const logger = new Logger('ApiGateway');
 
-  // CORS para comunicación con el frontend
-  app.enableCors();
+  // Cierra conexiones y termina las peticiones en curso al detener el contenedor
+  app.enableShutdownHooks();
+  app.use(requestLogging);
+
+  // Detrás de un proxy, sin esto todas las peticiones parecen venir de la misma IP
+  // y comparten el límite. Es la cantidad de proxies propios: nunca confiar de más,
+  // porque el cliente podría falsear su IP con X-Forwarded-For.
+  const proxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+  if (proxyHops > 0) {
+    app.set('trust proxy', proxyHops);
+  }
+
+  // cross-origin: el frontend vive en otro origen y muestra las fotos de /uploads
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+  // CORS: solo el frontend. CORS_ORIGINS es una lista separada por comas.
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
+      : DEV_ORIGINS,
+    exposedHeaders: ['x-request-id'],
+  });
 
   // Servir archivos estáticos subidos (uploads)
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
@@ -57,16 +86,12 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(
-    `[API Gateway] Servidor HTTP corriendo en http://localhost:${port}`,
+  logger.log(`Servidor HTTP corriendo en http://localhost:${port}`);
+  logger.log(
+    swaggerEnabled
+      ? `Documentación Swagger en http://localhost:${port}/api/docs`
+      : 'Swagger deshabilitado en producción.',
   );
-  if (swaggerEnabled) {
-    console.log(
-      `[Swagger Docs] Documentación lista en: http://localhost:${port}/api/docs`,
-    );
-  } else {
-    console.log('[Swagger Docs] Deshabilitado en producción.');
-  }
 }
 
 function setupSwagger(app: NestExpressApplication) {

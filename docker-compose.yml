@@ -5,24 +5,113 @@ services:
     container_name: allpets_mongodb
     restart: always
     ports:
-      - "27017:27017"
+      # Solo desde esta máquina: la base no tiene contraseña configurada.
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     environment:
       - MONGO_INITDB_DATABASE=allpets_users
 
-  # Cache y geolocalización en tiempo real (Reservas y GPS de paseadores)
+  # Límite de peticiones compartido entre gateways. A futuro, reservas y GPS.
   redis:
     image: redis:7-alpine
     container_name: allpets_redis
     restart: always
     ports:
-      - "6379:6379"
+      # Solo desde esta máquina: Redis no tiene contraseña configurada.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+
+  # La aplicación completa en contenedores: docker compose --profile app up --build
+  # Sin el perfil, "docker compose up -d mongo" sigue levantando solo la base.
+  core-user-service:
+    profiles: [app]
+    build:
+      context: ./backend
+      args:
+        SERVICE: core-user-service
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      - USER_SERVICE_BIND_HOST=0.0.0.0
+      - PORT_USER_SERVICE_TCP=3001
+      - MONGO_URI_USERS=mongodb://mongo:27017/allpets_users
+    depends_on:
+      - mongo
+
+  market-service:
+    profiles: [app]
+    build:
+      context: ./backend
+      args:
+        SERVICE: market-service
+    restart: unless-stopped
+    environment:
+      - MARKET_SERVICE_BIND_HOST=0.0.0.0
+      - PORT_MARKET_SERVICE_TCP=3002
+      - MONGO_URI_MARKET=mongodb://mongo:27017/allpets
+    depends_on:
+      - mongo
+
+  api-gateway:
+    profiles: [app]
+    build:
+      context: ./backend
+      args:
+        SERVICE: api-gateway
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      - PORT=3000
+      - USER_SERVICE_HOST=core-user-service
+      - USER_SERVICE_PORT=3001
+      - MARKET_SERVICE_HOST=market-service
+      - MARKET_SERVICE_PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGINS=http://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads_data:/app/uploads
+      - private_uploads_data:/app/private-uploads
+    depends_on:
+      - core-user-service
+      - market-service
+      - redis
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  frontend:
+    profiles: [app]
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api-gateway
 
 volumes:
   mongo_data:
     driver: local
   redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  private_uploads_data:
     driver: local

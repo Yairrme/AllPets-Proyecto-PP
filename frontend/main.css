@@ -5,11 +5,101 @@
 
 :root {
   color-scheme: light;
+
+  /* Marca AllPets: marrón cacao (botones, acentos, selección). */
+  --brand: #634a39;
+  --brand-rgb: 99 74 57; /* el mismo color, para sombras y anillos con transparencia */
+  --brand-dark: #4f3a2c;
+  --brand-darker: #3e2d22;
+  --brand-cream: #f6f1ec;
+  --brand-accent: #f59e0b;
+
+  /* Header blanco (en modo oscuro se redefinen más abajo) */
+  --header-bg: #ffffff;
+  --header-text: #2b231d;
+  --header-muted: #7a6a5d;
+  --header-border: #ece5dd;
+  --header-hover: #f6f1ec;
+  --header-accent: #634a39;
+  --search-bg: #faf7f4;
+  --search-border: #ddd3c8;
+
+  /* Paleta de Paseadores y Registro de trabajador (wp-*). Vive acá porque la
+     usan también la página de inicio y las tarjetas reutilizables. */
+  --color-ink: #1e2b22;
+  --color-paper: #ffffff;
+  --color-forest: #3f5b46;
+  --color-clay: #b15a34;
+  --color-gold: #c99a46;
+  --color-line: #d8cfb8;
 }
 
 body {
   background-color: #fafaf9;
   color: #1f2937;
+}
+
+/* =========================================================
+   LOGO: el PNG tiene fondo blanco, así que el sello es siempre
+   blanco (no usa .bg-white, que el modo oscuro pinta de negro).
+   ========================================================= */
+.logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 3px rgb(255 255 255 / 0.25),
+    0 8px 20px -8px rgb(0 0 0 / 0.55);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 2px;
+}
+a:hover > .logo-badge,
+a:focus-visible > .logo-badge,
+.logo-badge:is(a):hover {
+  transform: translateY(-2px) rotate(-3deg);
+  box-shadow:
+    0 0 0 3px rgb(245 158 11 / 0.55),
+    0 12px 24px -8px rgb(0 0 0 / 0.6);
+}
+html.dark .logo-badge {
+  box-shadow:
+    0 0 0 3px rgb(255 255 255 / 0.12),
+    0 8px 20px -8px rgb(0 0 0 / 0.9);
+}
+
+/* =========================================================
+   Llegada a una sección (Servicios, Quiénes somos)
+   ========================================================= */
+@keyframes section-arrive {
+  0% {
+    opacity: 0.25;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.section-arrive {
+  animation: section-arrive 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .section-arrive {
+    animation: none;
+  }
+  .logo-badge {
+    transition: none;
+  }
 }
 
 /* =========================================================
@@ -48,6 +138,24 @@ html.dark {
   --color-forest: #7fb08c;
   --color-clay: #e08e69;
   --color-line: #333333;
+
+  /* Fondo cálido de la página de inicio */
+  --brand-cream: #1c1814;
+
+  /* Marca un poco más clara para que los botones no se pierdan en el fondo negro */
+  --brand: #7b5e49;
+  --brand-rgb: 123 94 73;
+  --brand-dark: #634a39;
+
+  /* Header en modo oscuro */
+  --header-bg: #141414;
+  --header-text: #f3eee9;
+  --header-muted: #b3a79c;
+  --header-border: #2a2623;
+  --header-hover: #221e1b;
+  --header-accent: #c9ad97;
+  --search-bg: #1d1a18;
+  --search-border: #3a342f;
 }
 
 html.dark body {
@@ -72,41 +180,6 @@ html.dark .bg-\[\#f6f6f6\] {
 html.dark .border-white {
   border-color: var(--dark-surface);
 }
-/* --- Índigo (vistas de cliente, trabajador y login) --- */
-html.dark .bg-indigo-50,
-html.dark .hover\:bg-indigo-50:hover {
-  background-color: #1e1b3a;
-}
-html.dark .bg-indigo-100,
-html.dark .hover\:bg-indigo-100:hover {
-  background-color: #28244d;
-}
-html.dark .border-indigo-200 {
-  border-color: #3f3b7a;
-}
-html.dark .text-indigo-600 {
-  color: #818cf8;
-}
-html.dark .hover\:text-indigo-600:hover {
-  color: #a5b4fc;
-}
-html.dark .text-indigo-700,
-html.dark .text-indigo-800 {
-  color: #a5b4fc;
-}
-html.dark .hover\:text-indigo-800:hover {
-  color: #c7d2fe;
-}
-/* Botón "Elegir archivo" de los input type=file */
-html.dark .file\:bg-indigo-50::file-selector-button,
-html.dark .file\:bg-indigo-100::file-selector-button,
-html.dark .hover\:file\:bg-indigo-100:hover::file-selector-button {
-  background-color: #28244d;
-}
-html.dark .file\:text-indigo-700::file-selector-button {
-  color: #a5b4fc;
-}
-
 /* --- Ámbar (tienda, navegación, avisos) --- */
 html.dark .bg-amber-50 {
   background-color: #2a1f0e;
@@ -178,6 +251,10 @@ html.dark .text-green-800 {
 html.dark .bg-emerald-50 {
   background-color: #052e22;
 }
+/* Etiqueta "Disponible" (fondo verde claro + texto verde oscuro en modo claro) */
+html.dark .bg-emerald-100 {
+  background-color: #064e3b;
+}
 html.dark .border-emerald-200 {
   border-color: #065f46;
 }
@@ -194,7 +271,7 @@ html.dark .text-blue-800 {
 }
 
 /* --- Fondo del modal de reseñas / fotos (usaba --color-ink, ahora claro) --- */
-html.dark .bg-\[--color-ink\]\/50 {
+html.dark .bg-\(--color-ink\)\/50 {
   background-color: rgb(0 0 0 / 0.65);
 }
 
@@ -207,7 +284,8 @@ html.dark [class*="ring-offset"] {
 html.dark img[alt^="AllPets"] {
   border-radius: 0.75rem;
 }
-html.dark img:not([alt^="AllPets"]) {
+/* .keep-bright: ilustraciones sobre fondo blanco (si se atenúan, el blanco se ve gris) */
+html.dark img:not([alt^="AllPets"]):not(.keep-bright) {
   filter: brightness(0.9);
 }
 

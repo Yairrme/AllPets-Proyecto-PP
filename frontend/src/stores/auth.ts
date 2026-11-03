@@ -1,14 +1,8 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-const API_URL = 'http://localhost:3000'
-
-function getApiErrorMessage(error: any, fallback: string): string {
-  const message = error?.response?.data?.message
-  if (Array.isArray(message)) return message.join(', ')
-  if (typeof message === 'string') return message
-  return fallback
-}
+import { API_URL } from '../config'
+import { getApiErrorMessage } from '../utils/apiError'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -36,7 +30,7 @@ export const useAuthStore = defineStore('auth', {
         
         return data
       } catch (error: any) {
-        throw new Error(getApiErrorMessage(error, 'Error al iniciar sesión'))
+        throw new Error(getApiErrorMessage(error, 'Error al iniciar sesión'), { cause: error })
       }
     },
     async register(name: string, email: string, password: string, city: string, phone: string, role: string) {
@@ -52,8 +46,12 @@ export const useAuthStore = defineStore('auth', {
         
         return response.data
       } catch (error: any) {
-        throw new Error(getApiErrorMessage(error, 'Error al registrarse'))
+        throw new Error(getApiErrorMessage(error, 'Error al registrarse'), { cause: error })
       }
+    },
+    /** Guarda los cambios de `user` para que sobrevivan a recargar la página. */
+    persistUser() {
+      localStorage.setItem('user', JSON.stringify(this.user))
     },
     logout() {
       this.token = null

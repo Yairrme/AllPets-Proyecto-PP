@@ -7,23 +7,10 @@ import {
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
+import { isSerializedHttpError } from 'y/common';
 import { MARKET_SERVICE } from 'y/contracts';
 
 const REQUEST_TIMEOUT_MS = 5000;
-
-interface SerializedHttpError {
-  status: number;
-  body: string | object;
-}
-
-function isSerializedHttpError(error: unknown): error is SerializedHttpError {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    Number.isInteger((error as SerializedHttpError).status) &&
-    'body' in error
-  );
-}
 
 /**
  * Envoltorio del cliente TCP hacia el market-service. Traduce los errores

@@ -5,6 +5,8 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CoreUserService } from './core-user-service.service';
 import {
   AdminCaregiversQueryDto,
+  CaregiverDirectoryQueryDto,
+  CaregiverFileField,
   RegisterDto,
   LoginDto,
   CreateReviewDto,
@@ -40,6 +42,11 @@ export class CoreUserServiceController {
     return this.coreUserService.login(loginDto);
   }
 
+  @MessagePattern({ cmd: 'get_user_session' })
+  async getUserSession(@Payload() data: { user_id: string }) {
+    return this.coreUserService.getUserSession(data.user_id);
+  }
+
   @MessagePattern({ cmd: 'get_user_by_id' })
   async getUserById(@Payload() id: string) {
     return this.coreUserService.getUserById(id);
@@ -73,13 +80,70 @@ export class CoreUserServiceController {
   }
 
   @MessagePattern({ cmd: 'get_caregivers' })
-  async getCaregivers(@Payload() pagination: PaginationDto) {
-    return this.coreUserService.getCaregivers(pagination);
+  async getCaregivers(@Payload() query: CaregiverDirectoryQueryDto) {
+    return this.coreUserService.getCaregivers(query);
+  }
+
+  @MessagePattern({ cmd: 'get_directory_caregiver' })
+  async getDirectoryCaregiver(@Payload() data: { user_id: string }) {
+    return this.coreUserService.getDirectoryCaregiver(data.user_id);
   }
 
   @MessagePattern({ cmd: 'get_caregiver_profile' })
   async getCaregiverProfile(@Payload() data: { user_id: string }) {
     return this.coreUserService.getCaregiverProfileByUserId(data.user_id);
+  }
+
+  @MessagePattern({ cmd: 'get_public_caregiver_profile' })
+  async getPublicCaregiverProfile(@Payload() data: { user_id: string }) {
+    return this.coreUserService.getPublicCaregiverProfile(data.user_id);
+  }
+
+  @MessagePattern({ cmd: 'get_caregiver_contact' })
+  async getCaregiverContact(@Payload() data: { user_id: string }) {
+    return this.coreUserService.getCaregiverContact(data.user_id);
+  }
+
+  @MessagePattern({ cmd: 'update_caregiver_profile_image' })
+  async updateCaregiverProfileImage(
+    @Payload() data: { user_id: string; profile_image: string },
+  ) {
+    return this.coreUserService.updateCaregiverProfileImage(
+      data.user_id,
+      data.profile_image,
+    );
+  }
+
+  @MessagePattern({ cmd: 'add_caregiver_files' })
+  async addCaregiverFiles(
+    @Payload()
+    data: {
+      user_id: string;
+      field: CaregiverFileField;
+      paths: string[];
+    },
+  ) {
+    return this.coreUserService.addCaregiverFiles(
+      data.user_id,
+      data.field,
+      data.paths,
+    );
+  }
+
+  @MessagePattern({ cmd: 'remove_caregiver_file' })
+  async removeCaregiverFile(
+    @Payload()
+    data: {
+      user_id: string;
+      field: CaregiverFileField;
+      path: string;
+    },
+  ) {
+    return this.coreUserService.removeCaregiverFile(
+      data.user_id,
+      data.field,
+      data.path,
+    );
   }
 
   @MessagePattern({ cmd: 'update_caregiver_profile' })

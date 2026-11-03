@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { CITIES } from '../catalogs';
 
 export class UpdateUserDto {
   @ApiPropertyOptional({
@@ -29,13 +30,13 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({
     example: 'Cipolletti',
-    enum: ['Cipolletti', 'Neuquén'],
-    description: 'Ciudad de residencia (Cipolletti o Neuquén)',
+    enum: CITIES,
+    description: 'Ciudad de residencia',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['Cipolletti', 'Neuquén'], {
-    message: 'La ciudad debe ser Cipolletti o Neuquén.',
+  @IsIn(CITIES, {
+    message: `La ciudad debe ser ${CITIES.join(' o ')}.`,
   })
   city?: string;
 

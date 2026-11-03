@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { UserRole } from 'y/contracts';
+import { CITIES, UserRole } from 'y/contracts';
 
 export type UserDocument = User & Document;
 
@@ -20,8 +20,8 @@ export class User {
   @Prop({
     type: String,
     required: true,
-    enum: ['Cipolletti', 'Neuquén'],
-    default: 'Cipolletti',
+    enum: CITIES,
+    default: CITIES[0],
   })
   city: string;
 
@@ -41,3 +41,5 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+// Listados de administración y de prestadores, ordenados por fecha.
+UserSchema.index({ role: 1, created_at: -1 });

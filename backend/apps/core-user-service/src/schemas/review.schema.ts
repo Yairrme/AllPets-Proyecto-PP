@@ -23,3 +23,5 @@ export class Review {
 
 export const ReviewSchema = SchemaFactory.createForClass(Review);
 ReviewSchema.index({ reviewer_id: 1, caregiver_id: 1 }, { unique: true });
+// Reseñas de un prestador, de la más nueva a la más vieja.
+ReviewSchema.index({ caregiver_id: 1, created_at: -1 });

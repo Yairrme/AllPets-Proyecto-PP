@@ -33,7 +33,7 @@ export default {
           <button
             v-if="store.filtros.zona !== ''"
             @click="seleccionarZona('')"
-            class="text-left text-xs font-semibold text-[--color-forest] hover:underline"
+            class="text-left text-xs font-semibold text-(--color-forest) hover:underline"
           >
             Ver todas las ciudades
           </button>
@@ -45,8 +45,8 @@ export default {
             :class="[
               'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
               store.filtros.zona === ''
-                ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
-                : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
+                ? 'border-(--color-forest) bg-(--color-forest) text-(--color-paper)'
+                : 'border-(--color-line) bg-white text-(--color-ink)/70 hover:bg-(--color-paper)'
             ]"
           >
             Todas las ciudades
@@ -59,8 +59,8 @@ export default {
             :class="[
               'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
               store.filtros.zona === zona
-                ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
-                : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
+                ? 'border-(--color-forest) bg-(--color-forest) text-(--color-paper)'
+                : 'border-(--color-line) bg-white text-(--color-ink)/70 hover:bg-(--color-paper)'
             ]"
           >
             <span>{{ zona }}</span>
@@ -79,7 +79,7 @@ export default {
           <button
             v-if="store.filtros.rol !== ''"
             @click="seleccionarRol('')"
-            class="text-left text-xs font-semibold text-[--color-forest] hover:underline"
+            class="text-left text-xs font-semibold text-(--color-forest) hover:underline"
           >
             Ver todos
           </button>
@@ -91,8 +91,8 @@ export default {
             :class="[
               'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
               store.filtros.rol === ''
-                ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
-                : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
+                ? 'border-(--color-forest) bg-(--color-forest) text-(--color-paper)'
+                : 'border-(--color-line) bg-white text-(--color-ink)/70 hover:bg-(--color-paper)'
             ]"
           >
             Todos
@@ -104,7 +104,7 @@ export default {
               'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
               store.filtros.rol === 'walker'
                 ? 'border-[#E17100] bg-[#E17100] text-white'
-                : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
+                : 'border-(--color-line) bg-white text-(--color-ink)/70 hover:bg-(--color-paper)'
             ]"
           >
             🦮 Paseadores
@@ -115,8 +115,8 @@ export default {
             :class="[
               'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors',
               store.filtros.rol === 'caregiver'
-                ? 'border-[--color-forest] bg-[--color-forest] text-[--color-paper]'
-                : 'border-[--color-line] bg-white text-[--color-ink]/70 hover:bg-[--color-paper]'
+                ? 'border-(--color-forest) bg-(--color-forest) text-(--color-paper)'
+                : 'border-(--color-line) bg-white text-(--color-ink)/70 hover:bg-(--color-paper)'
             ]"
           >
             🏠 Cuidadores
@@ -124,6 +124,21 @@ export default {
         </div>
       </div>
     </div>
+
+    <!-- Solo quienes aceptan clientes nuevos -->
+    <label class="mt-5 inline-flex cursor-pointer items-center gap-3 select-none">
+      <input
+        v-model="store.filtros.soloDisponibles"
+        type="checkbox"
+        role="switch"
+        class="peer sr-only"
+      />
+      <span
+        class="relative h-6 w-11 rounded-full bg-(--color-line) transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-emerald-600 peer-checked:after:translate-x-5 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-600/40"
+        aria-hidden="true"
+      />
+      <span class="text-sm font-semibold text-(--color-ink)/80">Mostrar solo disponibles</span>
+    </label>
   </section>
 </template>
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { Paseador } from '../../types/paseador'
+import { formatARS } from '../../utils/currency'
+import { onAvatarError } from '../../utils/paseador'
 
 defineProps<{
   paseador: Paseador
@@ -22,15 +24,16 @@ export default {
     :class="[
       'group flex h-full flex-col overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg',
       paseador.rol === 'walker' ? 'wp-card-walker' : 'wp-card',
+      !paseador.disponible && 'wp-card-off',
     ]"
   >
 
     <!-- Foto de Perfil + Calificación flotante -->
-    <div class="relative h-72 sm:h-80 overflow-hidden bg-[--color-line]">
+    <div class="relative h-72 sm:h-80 overflow-hidden bg-(--color-line)">
       <img
         :src="paseador.foto"
         :alt="paseador.nombre"
-        @error="(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' }"
+        @error="onAvatarError"
         class="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
       />
       <div class="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
@@ -41,7 +44,7 @@ export default {
           'absolute left-3 top-3 rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-wider shadow-xs',
           paseador.rol === 'walker'
             ? 'bg-[#E17100] text-white'
-            : 'bg-[--color-forest] text-[--color-paper]',
+            : 'bg-(--color-forest) text-(--color-paper)',
         ]"
       >
         {{ paseador.rol === 'walker' ? '🦮 Paseador' : '🏠 Cuidador' }}
@@ -49,11 +52,25 @@ export default {
       
       <!-- Calificación -->
       <div
-        class="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-[--color-paper]/95 px-2.5 py-1 text-sm font-semibold text-[--color-ink]"
+        class="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-(--color-paper)/95 px-2.5 py-1 text-sm font-semibold text-(--color-ink)"
       >
         <span class="text-amber-500">★</span>
-        <span>{{ paseador.calificacion }}</span>
-        <span class="text-xs font-normal text-[--color-ink]/55">({{ paseador.totalResenas }})</span>
+        <span>{{ paseador.totalResenas > 0 ? paseador.calificacion : 'Nuevo' }}</span>
+        <span class="text-xs font-normal text-(--color-ink)/55">({{ paseador.totalResenas }})</span>
+      </div>
+
+      <!-- Disponibilidad -->
+      <div
+        :class="[
+          'absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold shadow-xs',
+          paseador.disponible ? 'bg-emerald-600 text-white' : 'bg-stone-700/90 text-white',
+        ]"
+      >
+        <span
+          :class="['h-2 w-2 rounded-full', paseador.disponible ? 'bg-emerald-200' : 'bg-stone-400']"
+          aria-hidden="true"
+        />
+        {{ paseador.disponible ? 'Disponible' : 'No disponible' }}
       </div>
 
       <!-- Zona / Ubicación en el pie de la imagen -->
@@ -73,7 +90,7 @@ export default {
           <h3
             :class="[
               'wp-serif text-xl font-semibold',
-              paseador.rol === 'walker' ? 'text-white' : 'text-[--color-ink]',
+              paseador.rol === 'walker' ? 'text-white' : 'text-(--color-ink)',
             ]"
           >
             {{ paseador.nombre }}
@@ -82,15 +99,15 @@ export default {
             <span
               :class="[
                 'wp-serif text-xl font-semibold',
-                paseador.rol === 'walker' ? 'text-white' : 'text-[--color-forest]',
+                paseador.rol === 'walker' ? 'text-white' : 'text-(--color-forest)',
               ]"
             >
-              ${{ paseador.tarifaHora.toLocaleString() }}
+              {{ formatARS(paseador.tarifaHora) }}
             </span>
             <span
               :class="[
                 'block text-xs',
-                paseador.rol === 'walker' ? 'text-white/80' : 'text-[--color-ink]/50',
+                paseador.rol === 'walker' ? 'text-white/80' : 'text-(--color-ink)/50',
               ]"
             >
               por hora
@@ -102,7 +119,7 @@ export default {
         <p
           :class="[
             'mb-4 line-clamp-3 min-h-[4.5rem] text-sm leading-relaxed',
-            paseador.rol === 'walker' ? 'text-white/95' : 'text-[--color-ink]/70',
+            paseador.rol === 'walker' ? 'text-white/95' : 'text-(--color-ink)/70',
           ]"
         >
           {{ paseador.biografia }}
@@ -117,7 +134,7 @@ export default {
           >
             <span
               v-if="badge === 'Verificado'"
-              :class="paseador.rol === 'walker' ? 'font-bold text-white' : 'font-bold text-[--color-clay]'"
+              :class="paseador.rol === 'walker' ? 'font-bold text-white' : 'font-bold text-(--color-clay)'"
             >✓</span>
             {{ badge }}
           </span>
@@ -134,20 +151,25 @@ export default {
       <div
         :class="[
           'flex gap-2 border-t pt-5',
-          paseador.rol === 'walker' ? 'border-white/25' : 'border-[--color-line]',
+          paseador.rol === 'walker' ? 'border-white/25' : 'border-(--color-line)',
         ]"
       >
         <button
           @click="emit('ver-perfil', paseador)"
           :class="paseador.rol === 'walker' ? 'wp-btn-ghost-walker flex-1' : 'wp-btn-ghost flex-1'"
         >
-          Ver Perfil
+          Ver perfil
         </button>
         <button
+          :disabled="!paseador.disponible"
+          :title="paseador.disponible ? undefined : 'No está tomando clientes nuevos por ahora'"
           @click="emit('contactar', paseador)"
-          :class="paseador.rol === 'walker' ? 'wp-btn-primary-walker flex-1' : 'wp-btn-primary flex-1'"
+          :class="[
+            paseador.rol === 'walker' ? 'wp-btn-primary-walker flex-1' : 'wp-btn-primary flex-1',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+          ]"
         >
-          <span>Contactar</span>
+          <span>{{ paseador.disponible ? 'Contactar' : 'No disponible' }}</span>
         </button>
       </div>
     </div>
@@ -158,6 +180,7 @@ export default {
 .wp-card { background: #FFFFFF; border: 1px solid var(--color-line); border-radius: 1.25rem; }
 .wp-card-walker { background: #d67f28; border: 1px solid #C86400; border-radius: 1.25rem; color: #FFFFFF; }
 .wp-serif { font-family: 'Fraunces', ui-serif, Georgia, serif; }
+.wp-card-off img { filter: grayscale(0.7); }
 .wp-tag { border: 1px solid var(--color-line); border-radius: 0.6rem; color: rgba(30, 43, 34, 0.7); font-size: 0.75rem; padding: 0.3rem 0.65rem; }
 .wp-tag-walker { background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 0.6rem; color: #FFFFFF; font-size: 0.75rem; font-weight: 500; padding: 0.3rem 0.65rem; }
 .wp-btn-primary, .wp-btn-ghost, .wp-btn-primary-walker, .wp-btn-ghost-walker { align-items: center; border-radius: 0.75rem; display: inline-flex; font-size: 0.85rem; font-weight: 600; justify-content: center; padding: 0.7rem 1rem; transition: all 0.15s ease; }

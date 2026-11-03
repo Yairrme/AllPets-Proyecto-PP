@@ -1,6 +1,7 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { consoleLogger } from 'y/common';
 import { MarketServiceModule } from './market-service.module';
 
 async function bootstrap() {
@@ -10,8 +11,20 @@ async function bootstrap() {
   // El único punto de entrada para el frontend es el API Gateway.
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     MarketServiceModule,
-    { transport: Transport.TCP, options: { host: '0.0.0.0', port } },
+    {
+      transport: Transport.TCP,
+      // Solo accesible desde esta máquina salvo que se configure otra interfaz
+      // (ej. 0.0.0.0 en una red privada de Docker): TCP no tiene autenticación.
+      options: {
+        host: process.env.MARKET_SERVICE_BIND_HOST || '127.0.0.1',
+        port,
+      },
+      logger: consoleLogger(),
+    },
   );
+
+  // Cierra conexiones y termina las peticiones en curso al detener el contenedor
+  app.enableShutdownHooks();
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -22,6 +35,6 @@ async function bootstrap() {
   );
 
   await app.listen();
-  console.log(`[Market Service] Listening on TCP port ${port}`);
+  new Logger('MarketService').log(`Listening on TCP port ${port}`);
 }
 bootstrap();

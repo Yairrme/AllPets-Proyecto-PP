@@ -4,6 +4,8 @@ import axios from 'axios'
 
 import App from './App.vue'
 import router from './router'
+import { setupChunkReload } from './utils/chunkReload'
+import { setupSessionInterceptor } from './utils/sessionInterceptor'
 
 const app = createApp(App)
 
@@ -14,5 +16,8 @@ if (token) {
 
 app.use(createPinia())
 app.use(router)
+
+setupSessionInterceptor(router)
+setupChunkReload(router)
 
 app.mount('#app')

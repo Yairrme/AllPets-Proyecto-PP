@@ -1,176 +1,178 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
-import type { Paseador, FiltrosPaseador, TamanoMascota } from '../types/paseador'
+import type { Paseador, FiltrosPaseador } from '../types/paseador'
+import { API_URL } from '../config'
+import { COVERAGE_ZONES, toPaseador } from '../utils/paseador'
 
-const COVERAGE_ZONES = ['Cipolletti', 'Neuquén']
+const PAGE_SIZE = 12
+const DESTACADOS = 6
+const TARIFA_SIN_LIMITE = 100000
+
+const FILTROS_INICIALES: FiltrosPaseador = {
+  busqueda: '',
+  zona: '',
+  rol: '',
+  tarifaMaxima: TARIFA_SIN_LIMITE,
+  calificacionMinima: 0,
+  tamanoMascota: '',
+  soloDisponibles: false,
+}
+
+const ERROR_LISTADO =
+  'No pudimos cargar los paseadores y cuidadores. Verificá que el servidor esté encendido e intentá de nuevo.'
+
+interface DirectorioResponse {
+  data: any[]
+  pagination: { page: number; total: number; totalPages: number }
+}
+
+const aPaseadores = (users: any[]): Paseador[] =>
+  users.map((user) => toPaseador(user, user.profile ?? null))
+
+/** Los filtros se resuelven en la API: en el navegador solo está la página cargada. */
+function aParametros(filtros: FiltrosPaseador): Record<string, string | number | boolean> {
+  const params: Record<string, string | number | boolean> = {}
+  const busqueda = filtros.busqueda.trim()
+  if (busqueda) params.q = busqueda
+  if (filtros.zona) params.city = filtros.zona
+  if (filtros.rol) params.role = filtros.rol
+  if (filtros.tarifaMaxima < TARIFA_SIN_LIMITE) params.max_rate = filtros.tarifaMaxima
+  if (filtros.calificacionMinima > 0) params.min_rating = filtros.calificacionMinima
+  if (filtros.tamanoMascota) params.pet_size = filtros.tamanoMascota
+  if (filtros.soloDisponibles) params.available = true
+  return params
+}
 
 export const usePaseadoresStore = defineStore('paseadores', () => {
   const paseadores = ref<Paseador[]>([])
+  const total = ref(0)
+  const page = ref(1)
+  const totalPages = ref(1)
   const isLoading = ref(false)
+  const isLoadingMore = ref(false)
+  const error = ref('')
+  const filtros = ref<FiltrosPaseador>({ ...FILTROS_INICIALES })
 
-  const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+  const destacados = ref<Paseador[]>([])
+  const disponiblesCount = ref(0)
 
-  function formatImageUrl(path?: string): string {
-    if (!path) return DEFAULT_AVATAR
-    if (path.startsWith('http')) return path
-    return `http://localhost:3000${path.startsWith('/') ? '' : '/'}${path}`
+  // Si cambian los filtros mientras hay una petición en curso, gana la última.
+  let ultimaPeticion = 0
+
+  async function pedirDirectorio(pagina: number) {
+    const response = await axios.get<DirectorioResponse>(`${API_URL}/caregivers`, {
+      params: { ...aParametros(filtros.value), page: pagina, limit: PAGE_SIZE },
+    })
+    if (!Array.isArray(response.data?.data)) {
+      throw new Error('Respuesta inesperada del servidor')
+    }
+    return response.data
   }
 
   async function fetchPaseadores() {
+    const peticion = ++ultimaPeticion
     isLoading.value = true
+    error.value = ''
     try {
-      const response = await axios.get('http://localhost:3000/caregivers')
-      const users = response.data?.data || []
-      
-      const paseadoresDisponibles: Paseador[] = []
-
-      for (const user of users) {
-        if (user.role === 'walker' || user.role === 'caregiver') {
-          let profile: any = null
-          try {
-            // Endpoint público para obtener detalles del cuidador/paseador sin requerir token
-            const profileRes = await axios.get(`http://localhost:3000/caregivers/${user._id}/profile`)
-            profile = profileRes.data
-          } catch {
-            // Perfil aún sin datos adicionales o en proceso de carga
-          }
-
-          const rawCity = user.city || profile?.city || profile?.zona || 'Cipolletti'
-          const zoneName = COVERAGE_ZONES.includes(rawCity) ? rawCity : 'Cipolletti'
-          const fotoUrl = formatImageUrl(profile?.profile_image || user.profile_image)
-          const galeriaUrls = Array.isArray(profile?.gallery_images)
-            ? profile.gallery_images.filter(Boolean).map((img: string) => formatImageUrl(img))
-            : []
-          const certificaciones = Array.isArray(profile?.certifications)
-            ? profile.certifications.filter(Boolean)
-            : []
-          const documentosCertificacion = Array.isArray(profile?.certification_documents)
-            ? profile.certification_documents.filter(Boolean).map((doc: string) => formatImageUrl(doc))
-            : []
-          const tamanos: TamanoMascota[] =
-            Array.isArray(profile?.accepted_sizes) && profile.accepted_sizes.length > 0
-              ? profile.accepted_sizes
-              : ['pequeño', 'mediano', 'grande']
-
-          paseadoresDisponibles.push({
-            id: user._id,
-            nombre: user.name,
-            rol: user.role === 'caregiver' ? 'caregiver' : 'walker',
-            foto: fotoUrl,
-            galeriaFotos: galeriaUrls,
-            certificaciones,
-            documentosCertificacion,
-            calificacion: Number(profile?.rating_avg) || 5.0,
-            totalResenas: Number(profile?.total_reviews) || 0,
-            tarifaHora: Number(profile?.hourly_rate ?? profile?.tarifaHora) || 4000,
-            aniosExperiencia: Number(profile?.experience_years) || 1,
-            biografia: profile?.bio || 'Paseador y cuidador comprometido con el cuidado y felicidad de tu mascota.',
-            zona: zoneName,
-            telefono: user.phone || '',
-            diasDisponibles: profile?.availability && profile.availability.length ? profile.availability : ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
-            horariosDisponibles: ['mañana', 'tarde'],
-            insignias: ['Verificado', ...certificaciones],
-            especialidades: profile?.services && profile.services.length ? profile.services : ['Paseo', 'Cuidado'],
-            tamanosAceptados: tamanos,
-            destacado: false,
-          })
-        }
-      }
-
-      paseadores.value = paseadoresDisponibles
-    } catch (error) {
-      console.error('Error al obtener lista de paseadores:', error)
+      const { data, pagination } = await pedirDirectorio(1)
+      if (peticion !== ultimaPeticion) return
+      paseadores.value = aPaseadores(data)
+      total.value = pagination.total
+      page.value = 1
+      totalPages.value = pagination.totalPages
+    } catch (e) {
+      if (peticion !== ultimaPeticion) return
+      console.error('Error al obtener lista de paseadores:', e)
       paseadores.value = []
+      total.value = 0
+      error.value = ERROR_LISTADO
+    } finally {
+      if (peticion === ultimaPeticion) isLoading.value = false
+    }
+  }
+
+  async function fetchMas() {
+    if (isLoadingMore.value || page.value >= totalPages.value) return
+    const peticion = ultimaPeticion
+    isLoadingMore.value = true
+    try {
+      const { data, pagination } = await pedirDirectorio(page.value + 1)
+      if (peticion !== ultimaPeticion) return
+      paseadores.value = [...paseadores.value, ...aPaseadores(data)]
+      total.value = pagination.total
+      page.value = pagination.page
+      totalPages.value = pagination.totalPages
+    } catch (e) {
+      console.error('Error al obtener más paseadores:', e)
+      error.value = ERROR_LISTADO
+    } finally {
+      isLoadingMore.value = false
+    }
+  }
+
+  /** Lo que muestra la página de inicio: no depende de los filtros del directorio. */
+  async function fetchDestacados() {
+    isLoading.value = true
+    error.value = ''
+    try {
+      const [lista, disponibles] = await Promise.all([
+        axios.get<DirectorioResponse>(`${API_URL}/caregivers`, { params: { limit: DESTACADOS } }),
+        axios.get<DirectorioResponse>(`${API_URL}/caregivers`, {
+          params: { limit: 1, available: true },
+        }),
+      ])
+      destacados.value = aPaseadores(lista.data.data)
+      disponiblesCount.value = disponibles.data.pagination.total
+    } catch (e) {
+      console.error('Error al obtener paseadores destacados:', e)
+      destacados.value = []
+      error.value = ERROR_LISTADO
     } finally {
       isLoading.value = false
     }
   }
 
-  // Filtros reactivos
-  const filtros = ref<FiltrosPaseador>({
-    busqueda: '',
-    zona: '',
-    rol: '',
-    tarifaMaxima: 100000,
-    calificacionMinima: 0,
-    tamanoMascota: '',
-  })
+  /** Un prestador puntual; también actualiza su tarjeta si está en la lista. */
+  async function fetchPaseador(id: string): Promise<Paseador | null> {
+    try {
+      const { data } = await axios.get(`${API_URL}/caregivers/${id}`)
+      const paseador = toPaseador(data, data.profile ?? null)
+      paseadores.value = paseadores.value.map((p) => (p.id === id ? paseador : p))
+      return paseador
+    } catch (e) {
+      console.error('Error al obtener el paseador:', e)
+      return null
+    }
+  }
 
-  // Getters
-  const paseadoresFiltrados = computed(() => {
-    return paseadores.value.filter((p) => {
-      // Filtro de búsqueda por nombre o biografía o zona
-      if (filtros.value.busqueda.trim() !== '') {
-        const query = filtros.value.busqueda.toLowerCase().trim()
-        const matchNombre = p.nombre.toLowerCase().includes(query)
-        const matchZona = p.zona.toLowerCase().includes(query)
-        const matchBio = p.biografia.toLowerCase().includes(query)
-        if (!matchNombre && !matchZona && !matchBio) return false
-      }
+  const zonasDisponibles = computed(() => COVERAGE_ZONES)
+  const hayMas = computed(() => page.value < totalPages.value)
 
-      // Filtro por zona (select)
-      if (filtros.value.zona !== '' && p.zona !== filtros.value.zona) {
-        return false
-      }
-
-      // Filtro por rol (paseador / cuidador)
-      if (filtros.value.rol !== '' && p.rol !== filtros.value.rol) {
-        return false
-      }
-
-      // Filtro por tarifa máxima
-      if (p.tarifaHora > filtros.value.tarifaMaxima) {
-        return false
-      }
-
-      // Filtro por calificación mínima
-      if (p.calificacion < filtros.value.calificacionMinima) {
-        return false
-      }
-
-      // Filtro por tamaño de mascota
-      if (filtros.value.tamanoMascota !== '' && !p.tamanosAceptados.includes(filtros.value.tamanoMascota)) {
-        return false
-      }
-
-      return true
-    })
-  })
-
-  const zonasDisponibles = computed(() => {
-    return COVERAGE_ZONES
-  })
-
-  // Acciones
   function setFiltros(nuevosFiltros: Partial<FiltrosPaseador>) {
     filtros.value = { ...filtros.value, ...nuevosFiltros }
   }
 
   function resetFiltros() {
-    filtros.value = {
-      busqueda: '',
-      zona: '',
-      rol: '',
-      tarifaMaxima: 100000,
-      calificacionMinima: 0,
-      tamanoMascota: '',
-    }
-  }
-
-  function getPaseadorById(id: string): Paseador | undefined {
-    return paseadores.value.find((p) => p.id === id)
+    filtros.value = { ...FILTROS_INICIALES }
   }
 
   return {
     paseadores,
+    total,
+    hayMas,
     isLoading,
+    isLoadingMore,
+    error,
     filtros,
-    paseadoresFiltrados,
+    destacados,
+    disponiblesCount,
     zonasDisponibles,
     fetchPaseadores,
+    fetchMas,
+    fetchDestacados,
+    fetchPaseador,
     setFiltros,
     resetFiltros,
-    getPaseadorById,
   }
 })

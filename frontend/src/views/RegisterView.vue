@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COVERAGE_ZONES } from '../utils/paseador'
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -44,9 +45,9 @@ const handleRegister = async () => {
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
           O
-          <!-- Mejora de legibilidad con text-indigo-600 y fuente semi-negrita -->
-          <RouterLink to="/login" class="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
-            inicia sesión si ya tienes una
+          <!-- Mejora de legibilidad con text-(--header-accent) y fuente semi-negrita -->
+          <RouterLink to="/login" class="font-semibold text-(--header-accent) hover:text-(--header-text) transition-colors">
+            iniciá sesión si ya tenés una
           </RouterLink>
         </p>
       </div>
@@ -58,37 +59,36 @@ const handleRegister = async () => {
           <div>
             <label for="name" class="block text-sm font-semibold text-gray-800 mb-1">Nombre completo</label>
             <input id="name" name="name" type="text" required v-model="name"
-              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow"
+              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--brand) focus:border-(--brand) sm:text-sm transition-shadow"
               placeholder="Juan Pérez" />
           </div>
           <!-- Campo Correo -->
           <div>
-            <label for="email-address" class="block text-sm font-semibold text-gray-800 mb-1">Correo Electrónico</label>
+            <label for="email-address" class="block text-sm font-semibold text-gray-800 mb-1">Correo electrónico</label>
             <input id="email-address" name="email" type="email" autocomplete="email" required v-model="email"
-              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow"
+              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--brand) focus:border-(--brand) sm:text-sm transition-shadow"
               placeholder="correo@ejemplo.com" />
           </div>
           <!-- Campo Contraseña -->
           <div>
             <label for="password" class="block text-sm font-semibold text-gray-800 mb-1">Contraseña</label>
             <input id="password" name="password" type="password" required v-model="password"
-              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow"
+              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--brand) focus:border-(--brand) sm:text-sm transition-shadow"
               placeholder="••••••••" />
           </div>
           <!-- Selector de Ciudad -->
           <div>
             <label for="city" class="block text-sm font-semibold text-gray-800 mb-1">Ciudad</label>
             <select id="city" v-model="city" required
-              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow">
-              <option value="Cipolletti">Cipolletti</option>
-              <option value="Neuquén">Neuquén</option>
+              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-(--brand) focus:border-(--brand) sm:text-sm transition-shadow">
+              <option v-for="zona in COVERAGE_ZONES" :key="zona" :value="zona">{{ zona }}</option>
             </select>
           </div>
           <!-- Campo Teléfono -->
           <div>
             <label for="phone" class="block text-sm font-semibold text-gray-800 mb-1">Teléfono</label>
             <input id="phone" name="phone" type="tel" v-model="phone"
-              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow"
+              class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-(--brand) focus:border-(--brand) sm:text-sm transition-shadow"
               placeholder="299 123-4567" />
           </div>
         </div>
@@ -99,7 +99,7 @@ const handleRegister = async () => {
 
         <div>
           <button type="submit" :disabled="isLoading"
-            class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm">
+            class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-md text-white bg-(--brand) hover:bg-(--brand-dark) focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--brand) disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm">
             {{ isLoading ? 'Registrando...' : 'Registrarse' }}
           </button>
         </div>
@@ -109,9 +109,9 @@ const handleRegister = async () => {
       <div class="mt-6 pt-6 border-t border-gray-200">
         <div class="text-center">
           <p class="text-sm font-medium text-gray-700">
-            ¿Quieres ofrecer tus servicios en All Pets?
+            ¿Querés ofrecer tus servicios en AllPets?
           </p>
-          <RouterLink to="/trabaja-con-nosotros" class="mt-3 inline-flex items-center justify-center px-4 py-2 border-2 border-indigo-600 text-sm font-bold rounded-md text-indigo-700 bg-white hover:bg-indigo-50 hover:border-indigo-700 transition-colors w-full">
+          <RouterLink to="/trabaja-con-nosotros" class="mt-3 inline-flex items-center justify-center px-4 py-2 border-2 border-(--brand) text-sm font-bold rounded-md text-(--header-accent) bg-white hover:bg-(--header-hover) hover:border-(--brand-dark) transition-colors w-full">
             Trabaja con nosotros como Paseador o Cuidador
           </RouterLink>
         </div>

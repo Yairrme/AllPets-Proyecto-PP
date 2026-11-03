@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { COVERAGE_ZONES } from '../utils/paseador'
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
+import { toApiUrl } from '../config'
 
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
-const API_URL = 'http://localhost:3000'
 
 const isUploadingImage = ref(false)
 const isEditing = ref(false)
@@ -27,18 +28,15 @@ onMounted(async () => {
     try {
       const freshUser = await profileStore.fetchUserById(userId)
       authStore.user = { ...authStore.user, ...freshUser }
-      localStorage.setItem('user', JSON.stringify(authStore.user))
+      authStore.persistUser()
     } catch (e) {
       console.error(e)
     }
   }
 })
 
-const getImageUrl = (path: string) => {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  return `${API_URL}${path}`
-}
+// Rutas /uploads del backend a URL absoluta (vacío si no hay foto)
+const getImageUrl = (path: string) => (path ? toApiUrl(path) : '')
 
 const startEditing = () => {
   successMsg.value = ''
@@ -75,7 +73,7 @@ const handleSaveProfile = async () => {
       ...authStore.user,
       ...updatedUser,
     }
-    localStorage.setItem('user', JSON.stringify(authStore.user))
+    authStore.persistUser()
     isEditing.value = false
     successMsg.value = 'Tus datos personales fueron actualizados correctamente.'
   } catch (error: any) {
@@ -100,7 +98,7 @@ const handleProfileImageChange = async (e: Event) => {
       // Actualizamos la sesión local con la nueva imagen
       if (authStore.user) {
         authStore.user.profile_image = updatedUser.profile_image
-        localStorage.setItem('user', JSON.stringify(authStore.user))
+        authStore.persistUser()
       }
       successMsg.value = 'Foto de perfil actualizada correctamente.'
     } catch (error: any) {
@@ -116,10 +114,10 @@ const handleProfileImageChange = async (e: Event) => {
 <template>
   <div class="min-h-screen bg-gray-50 text-gray-900 pb-12">
     <!-- Header -->
-    <div class="bg-indigo-700 pb-24">
+    <div class="bg-(--brand) pb-24">
       <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-bold text-white">Mi Perfil (Cliente)</h1>
-        <p class="mt-2 text-indigo-100">Gestiona tu foto de perfil y tu información personal.</p>
+        <h1 class="text-3xl font-bold text-white">Mi perfil</h1>
+        <p class="mt-2 text-white/80">Gestioná tu foto de perfil y tu información personal.</p>
       </div>
     </div>
 
@@ -148,7 +146,7 @@ const handleProfileImageChange = async (e: Event) => {
             </div>
             
             <div class="w-full text-center relative overflow-hidden">
-              <label class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-indigo-600 text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors w-full">
+              <label class="cursor-pointer inline-flex items-center justify-center px-4 py-2 border border-(--brand) text-sm font-medium rounded-md text-(--header-accent) bg-(--brand-cream) hover:bg-(--header-hover) transition-colors w-full">
                 <span>{{ isUploadingImage ? 'Subiendo...' : 'Cambiar foto' }}</span>
                 <input 
                   type="file" 
@@ -165,13 +163,13 @@ const handleProfileImageChange = async (e: Event) => {
           <div v-if="!isEditing" class="flex-1 w-full space-y-6">
             <div>
               <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-4">
-                <h3 class="text-lg font-bold text-gray-900">Información Personal</h3>
+                <h3 class="text-lg font-bold text-gray-900">Información personal</h3>
                 <button
                   type="button"
                   @click="startEditing"
-                  class="px-4 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors"
+                  class="px-4 py-1.5 bg-(--brand-cream) text-(--header-accent) hover:bg-(--header-hover) rounded-lg text-sm font-medium transition-colors"
                 >
-                  Editar Perfil
+                  Editar perfil
                 </button>
               </div>
               
@@ -181,7 +179,7 @@ const handleProfileImageChange = async (e: Event) => {
                   <div class="mt-1 text-gray-900 font-medium">{{ authStore.user?.name }}</div>
                 </div>
                 <div>
-                  <label class="block text-sm font-semibold text-gray-600">Correo Electrónico</label>
+                  <label class="block text-sm font-semibold text-gray-600">Correo electrónico</label>
                   <div class="mt-1 text-gray-900">{{ authStore.user?.email }}</div>
                 </div>
                 <div>
@@ -205,7 +203,7 @@ const handleProfileImageChange = async (e: Event) => {
           <!-- Formulario de Edición del Cliente -->
           <div v-else class="flex-1 w-full">
             <div class="border-b border-gray-200 pb-2 mb-4">
-              <h3 class="text-lg font-bold text-gray-900">Editar Información Personal</h3>
+              <h3 class="text-lg font-bold text-gray-900">Editar información personal</h3>
             </div>
 
             <form @submit.prevent="handleSaveProfile" class="space-y-4">
@@ -217,18 +215,18 @@ const handleProfileImageChange = async (e: Event) => {
                     type="text"
                     required
                     minlength="2"
-                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-(--brand) focus:ring-(--brand)"
                     placeholder="Juan Pérez"
                   />
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-800 mb-1">Correo Electrónico</label>
+                  <label class="block text-sm font-medium text-gray-800 mb-1">Correo electrónico</label>
                   <input
                     v-model="editForm.email"
                     type="email"
                     required
-                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-(--brand) focus:ring-(--brand)"
                     placeholder="correo@ejemplo.com"
                   />
                 </div>
@@ -238,10 +236,9 @@ const handleProfileImageChange = async (e: Event) => {
                   <select
                     v-model="editForm.city"
                     required
-                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm shadow-xs focus:border-(--brand) focus:ring-(--brand)"
                   >
-                    <option value="Cipolletti">Cipolletti</option>
-                    <option value="Neuquén">Neuquén</option>
+                    <option v-for="zona in COVERAGE_ZONES" :key="zona" :value="zona">{{ zona }}</option>
                   </select>
                 </div>
 
@@ -250,7 +247,7 @@ const handleProfileImageChange = async (e: Event) => {
                   <input
                     v-model="editForm.phone"
                     type="tel"
-                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+                    class="block w-full rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 px-3 py-2 text-sm shadow-xs focus:border-(--brand) focus:ring-(--brand)"
                     placeholder="299 123-4567"
                   />
                 </div>
@@ -267,9 +264,9 @@ const handleProfileImageChange = async (e: Event) => {
                 <button
                   type="submit"
                   :disabled="isSaving"
-                  class="px-5 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  class="px-5 py-2 rounded-lg text-sm font-semibold text-white bg-(--brand) hover:bg-(--brand-dark) transition-colors disabled:opacity-50"
                 >
-                  {{ isSaving ? 'Guardando...' : 'Guardar Cambios' }}
+                  {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
                 </button>
               </div>
             </form>

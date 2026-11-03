@@ -5,10 +5,13 @@ import {
   Put,
   Body,
   Param,
-  Inject,
+  Header,
   HttpStatus,
   HttpCode,
   BadRequestException,
+  Logger,
+  NotFoundException,
+  StreamableFile,
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
@@ -18,10 +21,10 @@ import {
   Query,
   Delete,
 } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
 import {
+  CaregiverFileField,
   CreateReviewDto,
+  MARKET_PATTERNS,
   PaginationDto,
   UpdateCaregiverProfileDto,
   UpdateUserDto,
@@ -38,12 +41,24 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
+import { createReadStream, existsSync } from 'fs';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { Roles } from './auth/roles.decorator';
 import type { AuthenticatedRequest } from './auth/auth.types';
 import { OwnerOrAdminGuard } from './auth/owner-or-admin.guard';
-import { imageUploadOptions as multerOptions } from './uploads/upload-options';
+import { UserSessionService } from './auth/user-session.service';
+import { MarketClient } from './market/market.client';
+import {
+  assertSavedFilename,
+  certificationFile,
+  certificationUploadOptions,
+  imageUploadOptions as multerOptions,
+  removeCertificationFile,
+  removeUploads,
+  removeUserCertifications,
+} from './uploads/upload-options';
+import { UserClient } from './user.client';
 
 /** Límite para endpoints de subida: 10 peticiones por minuto por IP */
 const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
@@ -53,8 +68,12 @@ const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
+
   constructor(
-    @Inject('USER_SERVICE') private readonly userServiceClient: ClientProxy,
+    private readonly users: UserClient,
+    private readonly market: MarketClient,
+    private readonly userSessions: UserSessionService,
   ) {}
 
   @Get('users/:id')
@@ -66,21 +85,10 @@ export class UserController {
     description: 'Usuario no encontrado o ID inválido',
   })
   @ApiResponse({ status: 403, description: 'Solo puedes ver tu propio perfil' })
-  async getUserById(
-    @Param('id') id: string,
-    @Req() request: AuthenticatedRequest,
-  ) {
+  getUserById(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     // Evita que un usuario consulte email/teléfono de otros usuarios
     this.assertCanManageUser(id, request);
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_user_by_id' }, id),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al obtener usuario',
-      );
-    }
+    return this.users.send('get_user_by_id', id, 'Error al obtener usuario');
   }
 
   @Put('users/:id')
@@ -94,24 +102,17 @@ export class UserController {
     status: 403,
     description: 'Solo puedes modificar tu propio perfil',
   })
-  async updateUser(
+  updateUser(
     @Param('id') id: string,
     @Body() updateData: UpdateUserDto,
     @Req() request: AuthenticatedRequest,
   ) {
     this.assertCanManageUser(id, request);
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_user' },
-          { user_id: id, updateData },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al actualizar los datos del usuario',
-      );
-    }
+    return this.users.send(
+      'update_user',
+      { user_id: id, updateData },
+      'Error al actualizar los datos del usuario',
+    );
   }
 
   @Delete('users/:id')
@@ -125,15 +126,30 @@ export class UserController {
     description: 'Acceso denegado (Requiere rol ADMIN)',
   })
   async deleteUser(@Param('id') id: string) {
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'delete_user' }, id),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al eliminar usuario',
-      );
-    }
+    const { files, ...result } = await this.users.send<{
+      message: string;
+      user_id: string;
+      files: string[];
+    }>('delete_user', id, 'Error al eliminar usuario');
+
+    this.userSessions.forget(id);
+    // La cuenta ya no existe: si falla la limpieza se registra, no se revierte.
+    await Promise.all([
+      this.market
+        .send(MARKET_PATTERNS.CART_DELETE, { userId: id })
+        .catch((error: unknown) =>
+          this.logger.error(
+            `No se pudo borrar el carrito de ${id}: ${String(error)}`,
+          ),
+        ),
+      Promise.all([removeUploads(files), removeUserCertifications(id)]).catch(
+        (error: unknown) =>
+          this.logger.error(
+            `No se pudieron borrar los archivos de ${id}: ${String(error)}`,
+          ),
+      ),
+    ]);
+    return result;
   }
 
   @Get('users')
@@ -144,35 +160,28 @@ export class UserController {
     status: 403,
     description: 'Acceso denegado (Requiere rol ADMIN)',
   })
-  async getAllUsers(@Query() pagination: PaginationDto) {
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'get_all_users' }, pagination),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al obtener usuarios',
-      );
-    }
+  getAllUsers(@Query() pagination: PaginationDto) {
+    return this.users.send(
+      'get_all_users',
+      pagination,
+      'Error al obtener usuarios',
+    );
   }
 
   @Get('users/:userId/caregiver-profile')
-  @ApiOperation({ summary: 'Obtener perfil de cuidador detallado' })
+  @UseGuards(OwnerOrAdminGuard)
+  @ApiOperation({
+    summary: 'Obtener el perfil completo, con comprobantes (dueño o admin)',
+  })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiResponse({ status: 200, description: 'Perfil obtenido exitosamente' })
-  async getCaregiverProfile(@Param('userId') userId: string) {
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'get_caregiver_profile' },
-          { user_id: userId },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al obtener el perfil del cuidador',
-      );
-    }
+  @ApiResponse({ status: 403, description: 'Solo el dueño o un admin' })
+  getCaregiverProfile(@Param('userId') userId: string) {
+    return this.users.send(
+      'get_caregiver_profile',
+      { user_id: userId },
+      'Error al obtener el perfil del cuidador',
+    );
   }
 
   @Put('users/:userId/caregiver-profile')
@@ -184,24 +193,17 @@ export class UserController {
     status: 403,
     description: 'Solo puedes modificar tu propio perfil',
   })
-  async updateCaregiverProfile(
+  updateCaregiverProfile(
     @Param('userId') userId: string,
     @Body() updateData: UpdateCaregiverProfileDto,
     @Req() request: AuthenticatedRequest,
   ) {
     this.assertCanManageUser(userId, request);
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_caregiver_profile' },
-          { user_id: userId, updateData },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al actualizar el perfil del cuidador',
-      );
-    }
+    return this.users.send(
+      'update_caregiver_profile',
+      { user_id: userId, updateData },
+      'Error al actualizar el perfil del cuidador',
+    );
   }
 
   @Post('users/:userId/image')
@@ -230,23 +232,16 @@ export class UserController {
   async uploadUserImage(
     @Param('userId') userId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Req() request: AuthenticatedRequest,
   ) {
     if (!file) throw new BadRequestException('No se ha subido ningún archivo');
-    this.assertCanManageUser(userId, request);
     const imageUrl = `/uploads/${file.filename}`;
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_user_profile_image' },
-          { user_id: userId, profile_image: imageUrl },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al guardar la imagen de perfil del usuario',
-      );
-    }
+    return this.keepFilesOnlyIfSaved([imageUrl], () =>
+      this.users.send(
+        'update_user_profile_image',
+        { user_id: userId, profile_image: imageUrl },
+        'Error al guardar la imagen de perfil del usuario',
+      ),
+    );
   }
 
   @Post('users/:userId/caregiver-profile/image')
@@ -273,23 +268,16 @@ export class UserController {
   async uploadProfileImage(
     @Param('userId') userId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Req() request: AuthenticatedRequest,
   ) {
     if (!file) throw new BadRequestException('No se ha subido ningún archivo');
-    this.assertCanManageUser(userId, request);
     const imageUrl = `/uploads/${file.filename}`;
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_caregiver_profile' },
-          { user_id: userId, updateData: { profile_image: imageUrl } },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al guardar la imagen de perfil',
-      );
-    }
+    return this.keepFilesOnlyIfSaved([imageUrl], () =>
+      this.users.send(
+        'update_caregiver_profile_image',
+        { user_id: userId, profile_image: imageUrl },
+        'Error al guardar la imagen de perfil',
+      ),
+    );
   }
 
   @Post('users/:userId/caregiver-profile/gallery')
@@ -313,47 +301,50 @@ export class UserController {
     },
   })
   @ApiResponse({ status: 200, description: 'Imágenes agregadas a la galería' })
+  @ApiResponse({ status: 409, description: 'Se superaría el máximo de fotos' })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
   async uploadGalleryImages(
     @Param('userId') userId: string,
     @UploadedFiles() files: Express.Multer.File[],
-    @Req() request: AuthenticatedRequest,
   ) {
     if (!files || files.length === 0)
       throw new BadRequestException('No se han subido archivos');
-    this.assertCanManageUser(userId, request);
 
-    // Obtener perfil actual para añadir las imágenes, no sobrescribirlas
-    let currentProfile: any;
-    try {
-      currentProfile = await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'get_caregiver_profile' },
-          { user_id: userId },
-        ),
-      );
-    } catch {
-      // Ignorar, si no existe el array estará vacío
-    }
+    const paths = files.map((f) => `/uploads/${f.filename}`);
+    return this.keepFilesOnlyIfSaved(paths, () =>
+      this.addFiles(
+        userId,
+        'gallery_images',
+        paths,
+        'Error al guardar imágenes en la galería',
+      ),
+    );
+  }
 
-    const currentGallery = currentProfile?.gallery_images || [];
-    const newImageUrls = files.map((f) => `/uploads/${f.filename}`);
-    const updatedGallery = [...currentGallery, ...newImageUrls];
-
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_caregiver_profile' },
-          { user_id: userId, updateData: { gallery_images: updatedGallery } },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al guardar imágenes en la galería',
-      );
-    }
+  @Delete('users/:userId/caregiver-profile/gallery/:filename')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
+  @UseGuards(OwnerOrAdminGuard)
+  @ApiOperation({ summary: 'Eliminar una foto de la galería' })
+  @ApiParam({ name: 'userId', description: 'ID del cuidador' })
+  @ApiParam({ name: 'filename', description: 'Nombre del archivo' })
+  @ApiResponse({ status: 200, description: 'Foto eliminada' })
+  @ApiResponse({ status: 404, description: 'La foto no es de este perfil' })
+  async removeGalleryImage(
+    @Param('userId') userId: string,
+    @Param('filename') filename: string,
+  ) {
+    assertSavedFilename(filename);
+    const path = `/uploads/${filename}`;
+    const profile = await this.removeFile(
+      userId,
+      'gallery_images',
+      path,
+      'Error al eliminar la foto',
+    );
+    await removeUploads([path]);
+    return profile;
   }
 
   @Post('users/:userId/caregiver-profile/certifications')
@@ -384,49 +375,79 @@ export class UserController {
     status: 200,
     description: 'Comprobantes de certificación agregados al perfil',
   })
+  @ApiResponse({
+    status: 409,
+    description: 'Se superaría el máximo de comprobantes',
+  })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
-  @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
+  @UseInterceptors(FilesInterceptor('files', 10, certificationUploadOptions))
   async uploadCertificationDocuments(
     @Param('userId') userId: string,
     @UploadedFiles() files: Express.Multer.File[],
-    @Req() request: AuthenticatedRequest,
   ) {
     if (!files || files.length === 0)
       throw new BadRequestException('No se han subido archivos');
-    this.assertCanManageUser(userId, request);
 
-    let currentProfile: any;
+    const filenames = files.map((f) => f.filename);
     try {
-      currentProfile = await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'get_caregiver_profile' },
-          { user_id: userId },
-        ),
-      );
-    } catch {
-      // Ignorar si no existe aún
-    }
-
-    const currentDocs = currentProfile?.certification_documents || [];
-    const newDocUrls = files.map((f) => `/uploads/${f.filename}`);
-    const updatedDocs = [...currentDocs, ...newDocUrls];
-
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'update_caregiver_profile' },
-          {
-            user_id: userId,
-            updateData: { certification_documents: updatedDocs },
-          },
-        ),
+      return await this.addFiles(
+        userId,
+        'certification_documents',
+        filenames,
+        'Error al guardar comprobantes de certificación',
       );
     } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al guardar comprobantes de certificación',
+      await Promise.all(
+        filenames.map((name) => removeCertificationFile(userId, name)),
       );
+      throw error;
     }
+  }
+
+  /** Los comprobantes son privados: <img> no alcanza, se piden con el token. */
+  @Get('users/:userId/caregiver-profile/certifications/:filename')
+  @UseGuards(OwnerOrAdminGuard)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({ summary: 'Ver un comprobante (dueño o admin)' })
+  @ApiParam({ name: 'userId', description: 'ID del cuidador' })
+  @ApiParam({ name: 'filename', description: 'Nombre del archivo' })
+  @ApiResponse({ status: 200, description: 'Imagen del comprobante' })
+  @ApiResponse({ status: 403, description: 'Solo el dueño o un admin' })
+  @ApiResponse({ status: 404, description: 'No existe' })
+  getCertificationDocument(
+    @Param('userId') userId: string,
+    @Param('filename') filename: string,
+  ) {
+    const { path, type } = certificationFile(userId, filename);
+    if (!existsSync(path)) {
+      throw new NotFoundException('Archivo no encontrado');
+    }
+    return new StreamableFile(createReadStream(path), { type });
+  }
+
+  @Delete('users/:userId/caregiver-profile/certifications/:filename')
+  @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
+  @UseGuards(OwnerOrAdminGuard)
+  @ApiOperation({ summary: 'Eliminar un comprobante' })
+  @ApiParam({ name: 'userId', description: 'ID del cuidador' })
+  @ApiParam({ name: 'filename', description: 'Nombre del archivo' })
+  @ApiResponse({ status: 200, description: 'Comprobante eliminado' })
+  @ApiResponse({ status: 404, description: 'No es de este perfil' })
+  async removeCertificationDocument(
+    @Param('userId') userId: string,
+    @Param('filename') filename: string,
+  ) {
+    assertSavedFilename(filename);
+    const profile = await this.removeFile(
+      userId,
+      'certification_documents',
+      filename,
+      'Error al eliminar el comprobante',
+    );
+    await removeCertificationFile(userId, filename);
+    return profile;
   }
 
   @Post('reviews')
@@ -438,43 +459,68 @@ export class UserController {
     status: 400,
     description: 'Datos inválidos o error al registrar la reseña',
   })
-  async createReview(
+  createReview(
     @Body() createReviewDto: CreateReviewDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'create_review' },
-          { ...createReviewDto, reviewer_id: request.user.sub },
-        ),
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al crear la reseña',
-      );
-    }
+    return this.users.send(
+      'create_review',
+      { ...createReviewDto, reviewer_id: request.user.sub },
+      'Error al crear la reseña',
+    );
   }
 
   @Get('reviews/caregiver/:caregiverId')
   @ApiOperation({ summary: 'Obtener reseñas de un cuidador (Paginado)' })
   @ApiParam({ name: 'caregiverId', description: 'ID del cuidador' })
   @ApiResponse({ status: 200, description: 'Listado de reseñas' })
-  async getReviewsForCaregiver(
+  getReviewsForCaregiver(
     @Param('caregiverId') caregiverId: string,
     @Query() pagination: PaginationDto,
   ) {
+    return this.users.send(
+      'get_reviews_for_caregiver',
+      { caregiver_id: caregiverId, pagination },
+      'Error al obtener reseñas del cuidador',
+    );
+  }
+
+  private addFiles(
+    userId: string,
+    field: CaregiverFileField,
+    paths: string[],
+    fallback: string,
+  ) {
+    return this.users.send(
+      'add_caregiver_files',
+      { user_id: userId, field, paths },
+      fallback,
+    );
+  }
+
+  private removeFile(
+    userId: string,
+    field: CaregiverFileField,
+    path: string,
+    fallback: string,
+  ) {
+    return this.users.send(
+      'remove_caregiver_file',
+      { user_id: userId, field, path },
+      fallback,
+    );
+  }
+
+  /** Multer ya guardó los archivos: si el perfil rechaza el cambio, no quedan huérfanos. */
+  private async keepFilesOnlyIfSaved<T>(
+    paths: string[],
+    save: () => Promise<T>,
+  ): Promise<T> {
     try {
-      return await firstValueFrom(
-        this.userServiceClient.send(
-          { cmd: 'get_reviews_for_caregiver' },
-          { caregiver_id: caregiverId, pagination },
-        ),
-      );
+      return await save();
     } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al obtener reseñas del cuidador',
-      );
+      await removeUploads(paths);
+      throw error;
     }
   }
 

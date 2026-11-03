@@ -3,24 +3,28 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
+import { PET_SIZES } from '../catalogs';
+
+/** Archivos que un prestador puede tener en cada lista de su perfil. */
+export const CAREGIVER_FILE_LIMITS = {
+  gallery_images: 20,
+  certification_documents: 20,
+} as const;
+
+export type CaregiverFileField = keyof typeof CAREGIVER_FILE_LIMITS;
 
 /**
- * Solo se aceptan rutas generadas por nuestros endpoints de subida
- * (ej: /uploads/file-1700000000000-abcd.jpg). Evita inyectar URLs externas
- * o esquemas peligrosos como javascript: en campos de imagen.
+ * Las fotos y los comprobantes no se editan por este DTO: tienen sus propios
+ * endpoints de subida y borrado, que controlan el límite y borran el archivo.
  */
-const UPLOAD_PATH_REGEX =
-  /^\/uploads\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp|gif)$/i;
-const UPLOAD_PATH_MESSAGE = 'Ruta de imagen no válida.';
-
 export class UpdateCaregiverProfileDto {
   @ApiPropertyOptional({
     example:
@@ -82,7 +86,7 @@ export class UpdateCaregiverProfileDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(3)
-  @IsIn(['pequeño', 'mediano', 'grande'], { each: true })
+  @IsIn(PET_SIZES, { each: true })
   accepted_sizes?: string[];
 
   @ApiPropertyOptional({
@@ -96,28 +100,6 @@ export class UpdateCaregiverProfileDto {
   phone?: string;
 
   @ApiPropertyOptional({
-    example: '/uploads/profile-123.jpg',
-    description: 'Ruta o URL de la imagen de perfil',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  @Matches(UPLOAD_PATH_REGEX, { message: UPLOAD_PATH_MESSAGE })
-  profile_image?: string;
-
-  @ApiPropertyOptional({
-    example: ['/uploads/gallery-1.jpg', '/uploads/gallery-2.jpg'],
-    description: 'Rutas de las fotos de la galería',
-    type: [String],
-  })
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @Matches(UPLOAD_PATH_REGEX, { each: true, message: UPLOAD_PATH_MESSAGE })
-  gallery_images?: string[];
-
-  @ApiPropertyOptional({
     example: ['Permiso Municipal Cipolletti', 'Primeros Auxilios Veterinarios'],
     description: 'Certificaciones y permisos municipales del paseador/cuidador',
     type: [String],
@@ -129,15 +111,11 @@ export class UpdateCaregiverProfileDto {
   certifications?: string[];
 
   @ApiPropertyOptional({
-    example: ['/uploads/cert-1.jpg'],
+    example: true,
     description:
-      'Rutas de fotos o comprobantes de certificaciones y permisos municipales',
-    type: [String],
+      'Si el paseador/cuidador acepta clientes nuevos (se muestra como Disponible / No disponible)',
   })
   @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(20)
-  @IsString({ each: true })
-  @Matches(UPLOAD_PATH_REGEX, { each: true, message: UPLOAD_PATH_MESSAGE })
-  certification_documents?: string[];
+  @IsBoolean()
+  is_available?: boolean;
 }

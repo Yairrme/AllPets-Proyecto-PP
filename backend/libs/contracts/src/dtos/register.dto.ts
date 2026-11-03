@@ -9,6 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { CITIES } from '../catalogs';
 import { UserRole } from '../enums/user-role.enum';
 
 /** Roles que se pueden elegir al registrarse (ADMIN queda excluido) */
@@ -48,12 +49,12 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'Neuquén',
-    enum: ['Cipolletti', 'Neuquén'],
-    description: 'Ciudad de residencia (Cipolletti o Neuquén)',
+    enum: CITIES,
+    description: 'Ciudad de residencia',
   })
   @IsString()
-  @IsIn(['Cipolletti', 'Neuquén'], {
-    message: 'La ciudad debe ser Cipolletti o Neuquén.',
+  @IsIn(CITIES, {
+    message: `La ciudad debe ser ${CITIES.join(' o ')}.`,
   })
   @IsNotEmpty({ message: 'La ciudad es obligatoria.' })
   city: string;
@@ -63,10 +64,15 @@ export class RegisterDto {
     description:
       'Número de teléfono (obligatorio para cuidadores y paseadores)',
   })
-  @ValidateIf((value) => value.role !== UserRole.CLIENT || value.phone != null)
+  // class-validator combina todos los @ValidateIf de una propiedad con AND, por
+  // eso hay uno solo: el cliente puede omitirlo, pero si lo manda se valida.
+  @ValidateIf(
+    (value) =>
+      value.role !== UserRole.CLIENT ||
+      (value.phone != null && value.phone !== ''),
+  )
   @IsString({ message: 'El teléfono debe ser texto.' })
   @MaxLength(30, { message: 'El teléfono no puede superar 30 caracteres.' })
-  @ValidateIf((value) => value.role !== UserRole.CLIENT)
   @IsNotEmpty({
     message: 'El teléfono es obligatorio para paseadores y cuidadores.',
   })

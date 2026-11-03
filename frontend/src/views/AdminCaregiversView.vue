@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { COVERAGE_ZONES } from "../utils/paseador";
 import { onMounted, reactive, ref } from "vue";
+import CaregiverProfilePreview from "../components/admin/CaregiverProfilePreview.vue";
+import { toApiUrl } from "../config";
 import {
   useAdminCaregiversStore,
   type AdminCaregiver,
+  type CaregiverDetail,
   type ProfileStatus,
   type StatusFilter,
 } from "../stores/adminCaregivers";
+import { formatARS } from "../utils/currency";
 
 interface CaregiverForm {
   name: string;
@@ -19,6 +24,7 @@ interface CaregiverForm {
   hourly_rate: number | "";
   experience_years: number | "";
   accepted_sizes: string[];
+  is_available: boolean;
 }
 
 const store = useAdminCaregiversStore();
@@ -29,7 +35,7 @@ const filters: { key: StatusFilter; label: string }[] = [
   { key: "approved", label: "Aprobados" },
   { key: "rejected", label: "Rechazados" },
 ];
-const cities = ["Cipolletti", "Neuquén"];
+const cities = COVERAGE_ZONES;
 const sizes = ["pequeño", "mediano", "grande"];
 
 const statusLabel: Record<ProfileStatus, string> = {
@@ -44,7 +50,7 @@ const statusClass: Record<ProfileStatus, string> = {
 };
 
 const inputClass =
-  "px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500";
+  "px-3 py-2 rounded-xl border border-stone-300 font-normal focus:outline-none focus:ring-2 focus:ring-(--brand)/30 focus:border-(--brand)";
 
 const emptyForm = (): CaregiverForm => ({
   name: "",
@@ -58,15 +64,28 @@ const emptyForm = (): CaregiverForm => ({
   hourly_rate: "",
   experience_years: "",
   accepted_sizes: [],
+  is_available: true,
 });
 
 const form = reactive<CaregiverForm>(emptyForm());
 const originalPhone = ref("");
 const editingId = ref<string | null>(null);
+const editingPhoto = ref("");
 const isLoadingDetail = ref(false);
 const formError = ref("");
 const pendingDeleteId = ref<string | null>(null);
+// Rechazar saca el perfil del listado público: se confirma antes, igual que eliminar.
+const pendingRejectId = ref<string | null>(null);
 const feedback = ref<{ type: "ok" | "error"; text: string } | null>(null);
+
+async function confirmReject(item: AdminCaregiver) {
+  pendingRejectId.value = null;
+  await changeStatus(item, "rejected");
+}
+
+// Vista previa del perfil (antes de aprobar / editar)
+const preview = ref<CaregiverDetail | null>(null);
+const loadingPreviewId = ref<string | null>(null);
 
 onMounted(() => {
   store.fetchCaregivers();
@@ -74,6 +93,79 @@ onMounted(() => {
 
 const roleLabel = (role: AdminCaregiver["role"]) =>
   role === "walker" ? "Paseador" : "Cuidador";
+
+/** Foto profesional o, si no tiene, la foto de usuario. */
+const avatarOf = (item: AdminCaregiver): string => {
+  const path = item.caregiver_image || item.profile_image;
+  return path ? toApiUrl(path) : "";
+};
+
+const statusMessage: Record<ProfileStatus, string> = {
+  approved: "aprobado: ya aparece en el listado público",
+  rejected: "rechazado",
+  pending: "vuelto a pendiente",
+};
+
+async function openPreview(item: AdminCaregiver) {
+  feedback.value = null;
+  loadingPreviewId.value = item._id;
+  const detail = await store.fetchDetail(item._id);
+  loadingPreviewId.value = null;
+  if (detail) {
+    preview.value = detail;
+  } else {
+    feedback.value = { type: "error", text: store.actionError };
+  }
+}
+
+async function setStatusFromPreview(status: ProfileStatus) {
+  if (!preview.value) return;
+  const { _id, name } = preview.value.user;
+  const ok = await store.setStatus(_id, status);
+  if (ok) {
+    preview.value = {
+      ...preview.value,
+      profile: { ...preview.value.profile, status },
+    };
+    feedback.value = { type: "ok", text: `Perfil de "${name}" ${statusMessage[status]}.` };
+  } else {
+    feedback.value = { type: "error", text: store.actionError };
+  }
+}
+
+async function changePhotoFromPreview(file: File) {
+  if (!preview.value) return;
+  const path = await store.uploadCaregiverPhoto(preview.value.user._id, file);
+  if (path) {
+    preview.value = {
+      ...preview.value,
+      profile: { ...preview.value.profile, profile_image: path },
+    };
+    feedback.value = {
+      type: "ok",
+      text: `Foto de "${preview.value.user.name}" actualizada.`,
+    };
+  } else {
+    feedback.value = { type: "error", text: store.actionError };
+  }
+}
+
+function editFromPreview() {
+  if (!preview.value) return;
+  const item = store.items.find((i) => i._id === preview.value?.user._id);
+  preview.value = null;
+  if (item) openEdit(item);
+}
+
+async function handleEditPhoto(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file || !editingId.value) return;
+  const path = await store.uploadCaregiverPhoto(editingId.value, file);
+  if (path) editingPhoto.value = path;
+  else formError.value = store.actionError;
+}
 
 const toLines = (text: string): string[] =>
   text
@@ -100,6 +192,7 @@ async function openEdit(item: AdminCaregiver) {
 
   const { user, profile } = detail;
   originalPhone.value = user.phone ?? "";
+  editingPhoto.value = profile.profile_image || user.profile_image || "";
   Object.assign(form, {
     name: user.name,
     email: user.email,
@@ -112,6 +205,7 @@ async function openEdit(item: AdminCaregiver) {
     hourly_rate: profile.hourly_rate ?? "",
     experience_years: profile.experience_years ?? "",
     accepted_sizes: [...(profile.accepted_sizes ?? [])],
+    is_available: profile.is_available !== false,
   });
 }
 
@@ -128,7 +222,7 @@ function validate(): string {
   if (!/^\S+@\S+\.\S+$/.test(form.email.trim()))
     return "El formato del email no es válido.";
   if (!cities.includes(form.city))
-    return "La ciudad debe ser Cipolletti o Neuquén.";
+    return `La ciudad debe ser ${COVERAGE_ZONES.join(" o ")}.`;
   if (form.phone.trim().length > 50)
     return "El teléfono no puede superar 50 caracteres.";
   if (form.bio.length > 500)
@@ -174,6 +268,7 @@ async function submit() {
     experience_years: Number(form.experience_years),
     accepted_sizes: form.accepted_sizes,
     certifications: toLines(form.certificationsText),
+    is_available: form.is_available,
   };
 
   const ok = await store.saveCaregiver(editingId.value, userData, profileData);
@@ -192,13 +287,7 @@ async function changeStatus(item: AdminCaregiver, status: ProfileStatus) {
   feedback.value = null;
   const ok = await store.setStatus(item._id, status);
   feedback.value = ok
-    ? {
-        type: "ok",
-        text:
-          status === "approved"
-            ? `Perfil de "${item.name}" aprobado.`
-            : `Perfil de "${item.name}" rechazado.`,
-      }
+    ? { type: "ok", text: `Perfil de "${item.name}" ${statusMessage[status]}.` }
     : { type: "error", text: store.actionError };
 }
 
@@ -219,10 +308,21 @@ async function confirmDelete(item: AdminCaregiver) {
         Paseadores y cuidadores
       </h2>
       <p class="text-stone-500 mt-1">
-        Revisá, aprobá, editá y eliminá los perfiles. Solo los perfiles
-        aprobados aparecen en el listado público.
+        Abrí <strong>Ver perfil</strong> para revisar fotos, comprobantes y
+        datos antes de aprobar. Solo los perfiles aprobados aparecen en el
+        listado público.
       </p>
     </div>
+
+    <CaregiverProfilePreview
+      v-if="preview"
+      :detail="preview"
+      :is-saving="store.isSaving"
+      @close="preview = null"
+      @set-status="setStatusFromPreview"
+      @edit="editFromPreview"
+      @change-photo="changePhotoFromPreview"
+    />
 
     <div
       class="flex flex-wrap gap-2 mb-6"
@@ -236,7 +336,7 @@ async function confirmDelete(item: AdminCaregiver) {
         class="px-4 py-2 rounded-xl text-sm font-bold border transition"
         :class="
           store.statusFilter === filter.key
-            ? 'bg-amber-500 text-white border-amber-500'
+            ? 'bg-(--brand) text-white border-(--brand)'
             : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
         "
         :aria-pressed="store.statusFilter === filter.key"
@@ -274,6 +374,41 @@ async function confirmDelete(item: AdminCaregiver) {
       </p>
 
       <template v-else>
+        <div class="sm:col-span-2 flex flex-wrap items-center gap-4">
+          <div
+            class="w-20 h-20 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 flex items-center justify-center"
+          >
+            <img
+              v-if="editingPhoto"
+              :src="toApiUrl(editingPhoto)"
+              alt="Foto de perfil"
+              class="w-full h-full object-cover"
+            />
+            <span v-else class="text-3xl text-stone-400" aria-hidden="true"
+              >👤</span
+            >
+          </div>
+          <label
+            class="cursor-pointer rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold text-stone-700 hover:bg-stone-100 transition"
+            :class="{ 'opacity-50 pointer-events-none': store.isSaving }"
+          >
+            📷 {{ editingPhoto ? "Cambiar foto" : "Subir foto" }} desde la PC
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="sr-only"
+              :disabled="store.isSaving"
+              @change="handleEditPhoto"
+            />
+          </label>
+          <label
+            class="ml-auto flex items-center gap-2 text-sm font-semibold text-stone-700"
+          >
+            <input v-model="form.is_available" type="checkbox" />
+            Disponible para clientes nuevos
+          </label>
+        </div>
+
         <label class="flex flex-col gap-1 text-sm font-semibold text-stone-700">
           Nombre
           <input
@@ -326,9 +461,15 @@ async function confirmDelete(item: AdminCaregiver) {
             v-model.number="form.hourly_rate"
             type="number"
             min="0"
-            step="1"
+            step="100"
             :class="inputClass"
           />
+          <span
+            v-if="form.hourly_rate !== ''"
+            class="text-xs font-normal text-stone-500"
+            >Se muestra como {{ formatARS(Number(form.hourly_rate)) }} por
+            hora</span
+          >
         </label>
 
         <label class="flex flex-col gap-1 text-sm font-semibold text-stone-700">
@@ -410,7 +551,7 @@ async function confirmDelete(item: AdminCaregiver) {
           </button>
           <button
             type="submit"
-            class="rounded-xl bg-amber-500 text-white font-bold px-5 py-2.5 hover:bg-amber-600 active:scale-95 transition disabled:bg-stone-300 disabled:cursor-not-allowed"
+            class="rounded-xl bg-(--brand) text-white font-bold px-5 py-2.5 hover:bg-(--brand-dark) active:scale-95 transition disabled:bg-stone-300 disabled:cursor-not-allowed"
             :disabled="store.isSaving"
           >
             {{ store.isSaving ? "Guardando..." : "Guardar cambios" }}
@@ -454,14 +595,32 @@ async function confirmDelete(item: AdminCaregiver) {
               <th class="px-4 py-3 font-bold">Rol</th>
               <th class="px-4 py-3 font-bold">Ciudad</th>
               <th class="px-4 py-3 font-bold">Estado</th>
+              <th class="px-4 py-3 font-bold">Disponibilidad</th>
               <th class="px-4 py-3 font-bold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-100">
             <tr v-for="item in store.items" :key="item._id">
               <td class="px-4 py-3">
-                <p class="font-bold text-stone-900">{{ item.name }}</p>
-                <p class="text-stone-500">{{ item.email }}</p>
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 shrink-0 rounded-full overflow-hidden bg-stone-100 border border-stone-200 flex items-center justify-center"
+                  >
+                    <img
+                      v-if="avatarOf(item)"
+                      :src="avatarOf(item)"
+                      :alt="`Foto de ${item.name}`"
+                      class="w-full h-full object-cover"
+                    />
+                    <span v-else class="text-stone-400" aria-hidden="true"
+                      >👤</span
+                    >
+                  </div>
+                  <div>
+                    <p class="font-bold text-stone-900">{{ item.name }}</p>
+                    <p class="text-stone-500">{{ item.email }}</p>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-3 text-stone-700">
                 {{ roleLabel(item.role) }}
@@ -473,6 +632,23 @@ async function confirmDelete(item: AdminCaregiver) {
                   :class="statusClass[item.profile_status]"
                 >
                   {{ statusLabel[item.profile_status] }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span
+                  class="inline-flex items-center gap-1.5 text-xs font-bold"
+                  :class="
+                    item.is_available ? 'text-emerald-700' : 'text-stone-500'
+                  "
+                >
+                  <span
+                    class="h-2 w-2 rounded-full"
+                    :class="
+                      item.is_available ? 'bg-emerald-500' : 'bg-stone-400'
+                    "
+                    aria-hidden="true"
+                  />
+                  {{ item.is_available ? "Disponible" : "No disponible" }}
                 </span>
               </td>
               <td class="px-4 py-3 text-right whitespace-nowrap">
@@ -494,7 +670,36 @@ async function confirmDelete(item: AdminCaregiver) {
                     Cancelar
                   </button>
                 </template>
+                <template v-else-if="pendingRejectId === item._id">
+                  <span class="mr-2 text-stone-600"
+                    >¿Rechazar? Deja de verse en el listado público.</span
+                  >
+                  <button
+                    class="font-bold text-red-600 hover:text-red-800 mr-3 disabled:text-stone-400"
+                    :disabled="store.isSaving"
+                    @click="confirmReject(item)"
+                  >
+                    Sí, rechazar
+                  </button>
+                  <button
+                    class="font-bold text-stone-600 hover:text-stone-800"
+                    @click="pendingRejectId = null"
+                  >
+                    Cancelar
+                  </button>
+                </template>
                 <template v-else>
+                  <button
+                    class="font-bold text-stone-800 hover:text-(--header-accent) mr-3 disabled:text-stone-400"
+                    :disabled="loadingPreviewId === item._id"
+                    @click="openPreview(item)"
+                  >
+                    {{
+                      loadingPreviewId === item._id
+                        ? "Abriendo..."
+                        : "Ver perfil"
+                    }}
+                  </button>
                   <button
                     v-if="item.profile_status !== 'approved'"
                     class="font-bold text-green-800 hover:text-green-900 mr-3 disabled:text-stone-400"
@@ -507,12 +712,15 @@ async function confirmDelete(item: AdminCaregiver) {
                     v-if="item.profile_status !== 'rejected'"
                     class="font-bold text-amber-700 hover:text-amber-800 mr-3 disabled:text-stone-400"
                     :disabled="store.isSaving"
-                    @click="changeStatus(item, 'rejected')"
+                    @click="
+                      pendingRejectId = item._id;
+                      pendingDeleteId = null;
+                    "
                   >
                     Rechazar
                   </button>
                   <button
-                    class="font-bold text-indigo-600 hover:text-indigo-800 mr-3"
+                    class="font-bold text-(--header-accent) hover:text-(--header-text) mr-3"
                     @click="openEdit(item)"
                   >
                     Editar

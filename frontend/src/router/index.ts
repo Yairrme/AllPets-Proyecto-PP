@@ -1,82 +1,82 @@
 import { createRouter, createWebHistory } from "vue-router";
-import PaseadoresView from "../views/PaseadoresView.vue";
-import LoginView from "../views/LoginView.vue";
-import RegisterView from "../views/RegisterView.vue";
-import RegisterWorkerView from "../views/RegisterWorkerView.vue";
-import WorkerOnboardingView from "../views/WorkerOnboardingView.vue";
-import WorkerDashboardView from "../views/WorkerDashboardView.vue";
-import ClientProfileView from "../views/ClientProfileView.vue";
-import ShopView from "../views/ShopView.vue";
-import CartView from "../views/CartView.vue";
-import AdminView from "../views/AdminView.vue";
+import { scrollToSection } from "../utils/scroll";
+import HomeView from "../views/HomeView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to) {
+  scrollBehavior(to, from) {
+    // Cambiar solo los filtros (?categoria=..., ?rol=...) no mueve la página.
+    if (to.path === from.path && !to.hash) return false;
+    // Misma página, otra sección (#servicios → #quienes-somos): se desplaza ya.
+    const delay = to.path === from.path ? 0 : 300;
     return new Promise((resolve) => {
       setTimeout(() => {
         if (to.hash) {
-          resolve({ el: to.hash, behavior: "smooth" });
+          // Descuenta el header fijo y anima la sección al llegar. Si la
+          // sección todavía no cargó, la vista vuelve a llamar a scrollToSection.
+          scrollToSection(to.hash);
+          resolve(false);
         } else {
           resolve({ top: 0, behavior: "smooth" });
         }
-      }, 300);
+      }, delay);
     });
   },
   routes: [
     {
       path: "/",
-      redirect: "/paseadores",
+      name: "home",
+      component: HomeView,
     },
     {
       path: "/paseadores",
       name: "paseadores",
-      component: PaseadoresView,
+      component: () => import("../views/PaseadoresView.vue"),
     },
     {
       path: "/login",
       name: "login",
-      component: LoginView,
+      component: () => import("../views/LoginView.vue"),
     },
     {
       path: "/register",
       name: "register",
-      component: RegisterView,
+      component: () => import("../views/RegisterView.vue"),
     },
     {
       path: "/trabaja-con-nosotros",
       name: "register-worker",
-      component: RegisterWorkerView,
+      component: () => import("../views/RegisterWorkerView.vue"),
     },
     {
       path: "/onboarding-trabajador",
       name: "onboarding-worker",
-      component: WorkerOnboardingView,
+      component: () => import("../views/WorkerOnboardingView.vue"),
     },
     {
       path: "/mi-panel",
       name: "worker-dashboard",
-      component: WorkerDashboardView,
+      component: () => import("../views/WorkerDashboardView.vue"),
     },
     {
       path: "/mi-perfil",
       name: "client-profile",
-      component: ClientProfileView,
+      component: () => import("../views/ClientProfileView.vue"),
     },
     {
       path: "/tienda",
       name: "shop",
-      component: ShopView,
+      component: () => import("../views/ShopView.vue"),
     },
     {
       path: "/carrito",
       name: "cart",
-      component: CartView,
+      component: () => import("../views/CartView.vue"),
     },
     {
       path: "/admin",
       name: "admin",
-      component: AdminView,
+      component: () => import("../views/AdminView.vue"),
     },
     {
       // Ruta anterior del CRUD de productos: ahora es una pestaña de Administración.
@@ -86,67 +86,51 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem("token");
-  const storedUser = localStorage.getItem("user");
-  const user = storedUser ? JSON.parse(storedUser) : null;
+/** Rol del usuario con sesión iniciada, o null si no hay sesión. */
+function currentRole(): string | null {
+  if (!localStorage.getItem("token")) return null;
+  try {
+    return JSON.parse(localStorage.getItem("user") ?? "null")?.role ?? null;
+  } catch {
+    return null;
+  }
+}
 
-  if ((to.name === "login" || to.name === "register") && token && user) {
-    if (user.role === "admin") {
-      next("/admin");
-    } else {
-      next(user.role === "client" ? "/paseadores" : "/mi-panel");
-    }
-    return;
+/** Pantallas de cada área. Prestadores y admin solo pueden usar la suya. */
+const WORKER_AREA = new Set(["worker-dashboard", "onboarding-worker"]);
+const ADMIN_AREA = new Set(["admin"]);
+const NEEDS_LOGIN = new Set(["client-profile", "cart"]);
+
+// La protección es de experiencia de usuario: el backend vuelve a validar
+// el JWT y el rol en cada endpoint.
+router.beforeEach((to) => {
+  const role = currentRole();
+  const name = String(to.name ?? "");
+
+  // Paseadores y cuidadores: solo su panel (con la vista previa de su perfil).
+  if (role === "walker" || role === "caregiver") {
+    return WORKER_AREA.has(name) ? true : { name: "worker-dashboard" };
   }
 
-  // El admin no tiene panel de trabajador: se lo manda a su sección.
-  if (to.name === "worker-dashboard" && token && user?.role === "admin") {
-    next("/admin");
-    return;
+  // Administrador: solo Administración.
+  if (role === "admin") {
+    return ADMIN_AREA.has(name) ? true : { name: "admin" };
   }
 
-  if (
-    to.name === "worker-dashboard" &&
-    (!token || !user || !["walker", "caregiver"].includes(user.role))
-  ) {
-    next("/login");
-    return;
+  // Clientes y visitantes no entran a las áreas de prestadores ni de admin.
+  if (WORKER_AREA.has(name)) {
+    if (role) return { name: "home" };
+    return name === "onboarding-worker" ? { name: "register-worker" } : { name: "login" };
   }
+  if (ADMIN_AREA.has(name)) return role ? { name: "home" } : { name: "login" };
 
-  if (
-    to.name === "onboarding-worker" &&
-    (!token || !user || !["walker", "caregiver"].includes(user.role))
-  ) {
-    next("/trabaja-con-nosotros");
-    return;
-  }
+  // Un cliente con sesión no necesita volver a ingresar ni registrarse.
+  if (role && (name === "login" || name === "register")) return { name: "home" };
 
-  // Proteger la vista de cliente para que solo accedan usuarios logueados
-  if (to.name === "client-profile" && (!token || !user)) {
-    next("/login");
-    return;
-  }
+  // Mi perfil y el carrito requieren sesión.
+  if (!role && NEEDS_LOGIN.has(name)) return { name: "login" };
 
-  // El carrito es personal: sin sesión se manda a iniciar sesión.
-  if (to.name === "cart" && (!token || !user)) {
-    next("/login");
-    return;
-  }
-
-  // Administración: solo ADMIN (el backend lo vuelve a validar en cada endpoint).
-  if (to.name === "admin") {
-    if (!token || !user) {
-      next("/login");
-      return;
-    }
-    if (user.role !== "admin") {
-      next("/paseadores");
-      return;
-    }
-  }
-
-  next();
+  return true;
 });
 
 export default router;

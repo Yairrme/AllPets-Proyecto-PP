@@ -2,6 +2,8 @@
 import { computed, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { useCartStore } from "../stores/cart";
+import { toApiUrl, WHATSAPP_NUMBER } from "../config";
+import { formatARS } from "../utils/currency";
 
 const cartStore = useCartStore();
 
@@ -12,11 +14,7 @@ onMounted(() => {
 const items = computed(() => cartStore.cart.items);
 const hasUnavailable = computed(() => items.value.some((i) => !i.hasStock));
 
-const formatPrice = (value: number) =>
-  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(
-    value,
-  );
-const WHATSAPP_NUMBER = "5492984946246"; // ← número real
+const formatPrice = formatARS;
 
 function checkoutWhatsApp() {
   if (!items.value.length) return;
@@ -62,7 +60,7 @@ function checkoutWhatsApp() {
       <p class="text-stone-600">Tu carrito está vacío.</p>
       <RouterLink
         to="/tienda"
-        class="inline-block mt-4 rounded-xl bg-amber-500 text-white font-bold px-5 py-2.5 hover:bg-amber-600"
+        class="inline-block mt-4 rounded-xl bg-(--brand) text-white font-bold px-5 py-2.5 hover:bg-(--brand-dark)"
       >
         Ir a la tienda
       </RouterLink>
@@ -76,7 +74,7 @@ function checkoutWhatsApp() {
           class="flex gap-4 bg-white rounded-2xl border border-stone-200 p-4"
         >
           <img
-            :src="item.imageUrl"
+            :src="toApiUrl(item.imageUrl)"
             :alt="item.title"
             class="w-24 h-24 rounded-xl object-cover bg-stone-100"
           />

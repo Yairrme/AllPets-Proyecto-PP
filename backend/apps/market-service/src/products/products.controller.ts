@@ -4,11 +4,12 @@ import {
   CreateProductDto,
   MARKET_PATTERNS,
   ProductIdParamDto,
+  ProductsQueryDto,
   UpdateProductPayload,
 } from 'y/contracts';
-import { HttpToRpcExceptionFilter } from '../rpc/http-to-rpc.filter';
+import { HttpToRpcExceptionFilter } from 'y/common';
 import { Product } from './product.schema';
-import { ProductsService } from './products.service';
+import { ProductsPage, ProductsService } from './products.service';
 
 @Controller()
 @UseFilters(HttpToRpcExceptionFilter)
@@ -16,8 +17,8 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @MessagePattern(MARKET_PATTERNS.PRODUCTS_LIST)
-  getAll(): Promise<Product[]> {
-    return this.productsService.findAll();
+  getAll(@Payload() query: ProductsQueryDto): Promise<ProductsPage> {
+    return this.productsService.findAll(query);
   }
 
   @MessagePattern(MARKET_PATTERNS.PRODUCTS_GET)

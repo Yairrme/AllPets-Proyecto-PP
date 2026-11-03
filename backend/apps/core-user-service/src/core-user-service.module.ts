@@ -10,14 +10,14 @@ import {
   CaregiverProfileSchema,
 } from './schemas/caregiver-profile.schema';
 import { Review, ReviewSchema } from './schemas/review.schema';
-import { validateEnvironment } from 'y/common';
+import { validateUserServiceEnvironment } from 'y/common';
 
 @Module({
   imports: [
     // Soporte para variables de entorno (.env)
     ConfigModule.forRoot({
       isGlobal: true,
-      validate: validateEnvironment,
+      validate: validateUserServiceEnvironment,
     }),
 
     // Conexión principal a la base de datos MongoDB

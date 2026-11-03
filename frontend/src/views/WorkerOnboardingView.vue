@@ -128,9 +128,9 @@ const handleSaveProfile = async () => {
   <div class="min-h-screen bg-gray-50 text-gray-900 py-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center">
     <div class="max-w-2xl w-full bg-white text-gray-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100">
       
-      <div class="bg-indigo-600 px-8 py-6 text-white text-center">
-        <h2 class="text-2xl font-bold">Completa tu perfil profesional</h2>
-        <p class="mt-2 text-indigo-100 text-sm">Ayuda a los dueños de mascotas a conocerte mejor para que confíen en tus servicios.</p>
+      <div class="bg-(--brand) px-8 py-6 text-white text-center">
+        <h2 class="text-2xl font-bold">Completá tu perfil profesional</h2>
+        <p class="mt-2 text-white/80 text-sm">Ayudá a los dueños de mascotas a conocerte mejor para que confíen en tus servicios.</p>
       </div>
       
       <form class="px-8 py-8 space-y-8" @submit.prevent="handleSaveProfile">
@@ -138,7 +138,7 @@ const handleSaveProfile = async () => {
         <!-- Sección de Foto -->
         <div class="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-gray-100">
           <div class="flex-shrink-0">
-            <div v-if="profileImagePreview" class="h-24 w-24 rounded-full overflow-hidden border-2 border-indigo-200">
+            <div v-if="profileImagePreview" class="h-24 w-24 rounded-full overflow-hidden border-2 border-(--search-border)">
               <img :src="profileImagePreview" alt="Profile Preview" class="h-full w-full object-cover" />
             </div>
             <div v-else class="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
@@ -146,43 +146,43 @@ const handleSaveProfile = async () => {
             </div>
           </div>
           <div class="flex-1 text-center sm:text-left">
-            <label class="block text-sm font-medium text-gray-800 mb-2">Sube una foto de perfil (Opcional pero recomendado)</label>
-            <input type="file" accept="image/*" class="text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" @change="handleImageChange" />
+            <label class="block text-sm font-medium text-gray-800 mb-2">Subí una foto de perfil (opcional, pero recomendado)</label>
+            <input type="file" accept="image/*" class="text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-(--brand-cream) file:text-(--header-accent) hover:file:bg-(--brand-cream)" @change="handleImageChange" />
           </div>
         </div>
 
         <!-- Sección de Bio -->
         <div>
-          <label class="block text-sm font-medium text-gray-800 mb-2">Cuéntanos sobre ti y tu experiencia con mascotas</label>
-          <textarea v-model="bio" rows="4" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-3" placeholder="Ej. Llevo más de 5 años cuidando perritos y me encanta pasar tiempo con ellos en parques..."></textarea>
+          <label class="block text-sm font-medium text-gray-800 mb-2">Contanos sobre vos y tu experiencia con mascotas</label>
+          <textarea v-model="bio" rows="4" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-(--brand) focus:border-(--brand) sm:text-sm p-3" placeholder="Ej. Llevo más de 5 años cuidando perritos y me encanta pasar tiempo con ellos en parques..."></textarea>
         </div>
 
         <!-- Tarifa por hora y Años de experiencia -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-800 mb-2">Tarifa por hora ($)</label>
-            <input v-model.number="hourlyRate" type="number" min="0" step="100" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-3" placeholder="4000" />
+            <label class="block text-sm font-medium text-gray-800 mb-2">Tarifa por hora (pesos argentinos)</label>
+            <input v-model.number="hourlyRate" type="number" min="0" step="100" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-(--brand) focus:border-(--brand) sm:text-sm p-3" placeholder="4000" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-800 mb-2">Años de experiencia</label>
-            <input v-model.number="experienceYears" type="number" min="0" max="50" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-3" placeholder="1" />
+            <input v-model.number="experienceYears" type="number" min="0" max="50" class="block w-full border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg shadow-sm focus:ring-(--brand) focus:border-(--brand) sm:text-sm p-3" placeholder="1" />
           </div>
         </div>
 
         <!-- Servicios Adicionales -->
         <div>
-          <label class="block text-sm font-medium text-gray-800 mb-2">Servicios que ofreces (Selecciona los que apliquen)</label>
+          <label class="block text-sm font-medium text-gray-800 mb-2">Servicios que ofrecés (elegí los que correspondan)</label>
           <div class="grid grid-cols-2 gap-4">
-            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Paseo') ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
-              <input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" :checked="services.includes('Paseo')" @change="toggleService('Paseo')">
-              <span class="ml-3 font-medium text-gray-900">Paseo de Perros</span>
+            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Paseo') ? 'border-(--brand) bg-(--brand-cream)' : 'border-gray-200'">
+              <input type="checkbox" class="h-4 w-4 text-(--header-accent) border-gray-300 rounded focus:ring-(--brand)" :checked="services.includes('Paseo')" @change="toggleService('Paseo')">
+              <span class="ml-3 font-medium text-gray-900">Paseo de perros</span>
             </label>
-            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Cuidado en casa') ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
-              <input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" :checked="services.includes('Cuidado en casa')" @change="toggleService('Cuidado en casa')">
+            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Cuidado en casa') ? 'border-(--brand) bg-(--brand-cream)' : 'border-gray-200'">
+              <input type="checkbox" class="h-4 w-4 text-(--header-accent) border-gray-300 rounded focus:ring-(--brand)" :checked="services.includes('Cuidado en casa')" @change="toggleService('Cuidado en casa')">
               <span class="ml-3 font-medium text-gray-900">Cuidado en casa</span>
             </label>
-            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Visitas a domicilio') ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'">
-              <input type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" :checked="services.includes('Visitas a domicilio')" @change="toggleService('Visitas a domicilio')">
+            <label class="relative flex items-center p-4 border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors" :class="services.includes('Visitas a domicilio') ? 'border-(--brand) bg-(--brand-cream)' : 'border-gray-200'">
+              <input type="checkbox" class="h-4 w-4 text-(--header-accent) border-gray-300 rounded focus:ring-(--brand)" :checked="services.includes('Visitas a domicilio')" @change="toggleService('Visitas a domicilio')">
               <span class="ml-3 font-medium text-gray-900">Visitas a domicilio</span>
             </label>
           </div>
@@ -190,11 +190,11 @@ const handleSaveProfile = async () => {
 
         <!-- Tamaños de mascota aceptados -->
         <div>
-          <label class="block text-sm font-medium text-gray-800 mb-2">Tamaños de mascota que aceptas</label>
+          <label class="block text-sm font-medium text-gray-800 mb-2">Tamaños de mascota que aceptás</label>
           <div class="flex flex-wrap gap-2">
             <button type="button" v-for="size in petSizes" :key="size" @click="toggleSize(size)"
               class="px-4 py-2 rounded-full text-sm font-medium transition-colors border capitalize"
-              :class="acceptedSizes.includes(size) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+              :class="acceptedSizes.includes(size) ? 'bg-(--brand) text-white border-(--brand) shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
               {{ size }}
             </button>
           </div>
@@ -202,7 +202,7 @@ const handleSaveProfile = async () => {
 
         <!-- Certificaciones y Permisos Municipales -->
         <div>
-          <label class="block text-sm font-medium text-gray-800 mb-2">Certificaciones y Permisos Municipales (Opcional)</label>
+          <label class="block text-sm font-medium text-gray-800 mb-2">Certificaciones y permisos municipales (opcional)</label>
           <div class="flex flex-wrap gap-2 mb-3">
             <button
               type="button"
@@ -221,7 +221,7 @@ const handleSaveProfile = async () => {
               type="text"
               maxlength="120"
               @keydown.enter.prevent="addCustomCert"
-              class="flex-1 border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg text-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="flex-1 border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg text-sm px-3 py-2 focus:ring-(--brand) focus:border-(--brand)"
               placeholder="Ej: Permiso Municipal Cipolletti N° 458"
             />
             <button
@@ -250,7 +250,7 @@ const handleSaveProfile = async () => {
           <div class="flex flex-wrap gap-2">
             <button type="button" v-for="day in daysOfWeek" :key="day" @click="toggleDay(day)"
               class="px-4 py-2 rounded-full text-sm font-medium transition-colors border"
-              :class="availability.includes(day) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
+              :class="availability.includes(day) ? 'bg-(--brand) text-white border-(--brand) shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'">
               {{ day }}
             </button>
           </div>
@@ -262,7 +262,7 @@ const handleSaveProfile = async () => {
 
         <div class="pt-4">
           <button type="submit" :disabled="isLoading"
-            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all">
+            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-(--brand) hover:bg-(--brand-dark) focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--brand) disabled:opacity-50 transition-all">
             {{ isLoading ? 'Guardando perfil...' : 'Guardar Perfil e Ir a mi Panel' }}
           </button>
         </div>

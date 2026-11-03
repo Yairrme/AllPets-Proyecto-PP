@@ -14,12 +14,20 @@
         } catch (e) {}
       })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Acá y no con @import en una vista: si Google Fonts está bloqueado, una vista con
+         carga diferida no llegaría a abrirse; así solo se usa la tipografía de respaldo. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&display=swap"
+    />
     <link rel="stylesheet" href="main.css" />
     <title>AllPets</title>
   </head>
 
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

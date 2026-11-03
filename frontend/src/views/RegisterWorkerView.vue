@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COVERAGE_ZONES } from '../utils/paseador'
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -23,24 +24,24 @@ const roles = [
 
 const steps = [
   {
-    title: 'Crea tu perfil sin cargo',
-    text: 'Registrarte es gratis. Ofrece alojamiento, guardería, cuidado a domicilio o paseos.',
+    title: 'Creá tu perfil sin cargo',
+    text: 'Registrarte es gratis. Ofrecé alojamiento, guardería, cuidado a domicilio o paseos.',
   },
   {
-    title: 'Decide cómo quieres trabajar',
-    text: 'Elige tu horario, tus tarifas por hora y los tamaños de mascota que aceptas.',
+    title: 'Decidí cómo querés trabajar',
+    text: 'Elegí tu horario, tus tarifas por hora y los tamaños de mascota que aceptás.',
   },
   {
-    title: 'Recibe a tu primera mascota',
+    title: 'Recibí a tu primera mascota',
     text: 'Con tu perfil activo, los dueños te contactan directo para coordinar cada servicio.',
   },
 ]
 
 const benefits = [
-  { title: 'Tu horario y tu tarifa', text: 'Define tus días disponibles, tus servicios y tu presupuesto.' },
+  { title: 'Tu horario y tu tarifa', text: 'Definí tus días disponibles, tus servicios y tu presupuesto.' },
   { title: 'Clientes cercanos', text: 'Tu perfil se muestra a dueños de Cipolletti y Neuquén.' },
-  { title: 'Fotos y certificaciones', text: 'Sube tu galería y tus permisos o cursos desde el teléfono.' },
-  { title: 'Contacto directo', text: 'Coordina cada paseo por WhatsApp, cuando quieras.' },
+  { title: 'Fotos y certificaciones', text: 'Subí tu galería y tus permisos o cursos desde el teléfono.' },
+  { title: 'Contacto directo', text: 'Coordiná cada paseo por WhatsApp, cuando quieras.' },
 ]
 
 const handleRegisterWorker = async () => {
@@ -51,7 +52,7 @@ const handleRegisterWorker = async () => {
     await authStore.login(email.value, password.value)
     router.push('/onboarding-trabajador')
   } catch (error: any) {
-    errorMsg.value = error.message || 'No pudimos crear tu cuenta. Revisa los datos e intenta de nuevo.'
+    errorMsg.value = error.message || 'No pudimos crear tu cuenta. Revisá los datos e intentá de nuevo.'
   } finally {
     isLoading.value = false
   }
@@ -69,7 +70,7 @@ const handleRegisterWorker = async () => {
         <div>
           <p class="wp-muted text-sm">Cipolletti y Neuquén</p>
           <h1 class="wp-serif mt-3 max-w-xl text-4xl font-semibold leading-[1.1] sm:text-5xl">
-            Cuida y pasea mascotas con All Pets
+            Cuidá y paseá mascotas con AllPets
           </h1>
           <p class="wp-muted mt-4 max-w-md text-base leading-relaxed">
             Gana dinero con tu propio horario mientras pasas tiempo con animales.
@@ -78,7 +79,7 @@ const handleRegisterWorker = async () => {
           <div class="mt-10 aspect-[16/10] overflow-hidden rounded-2xl bg-stone-100">
             <img
               :src="walkersHeroImg"
-              alt="Paseadores y cuidadores con perros en All Pets"
+              alt="Paseadores y cuidadores con perros en AllPets"
               class="h-full w-full object-cover object-center"
             />
           </div>
@@ -96,12 +97,12 @@ const handleRegisterWorker = async () => {
 
         <!-- Derecha: formulario -->
         <div class="wp-card p-7 sm:p-9 lg:sticky lg:top-24">
-          <h2 class="wp-serif text-2xl font-semibold">Crea tu perfil</h2>
+          <h2 class="wp-serif text-2xl font-semibold">Creá tu perfil</h2>
           <p class="wp-muted mt-1 text-sm">Es gratis y te toma un minuto.</p>
 
           <form class="mt-7 space-y-5" @submit.prevent="handleRegisterWorker">
             <fieldset>
-              <legend class="wp-field-label mb-2">¿Qué servicio ofreces?</legend>
+              <legend class="wp-field-label mb-2">¿Qué servicio ofrecés?</legend>
               <div class="grid grid-cols-2 gap-3">
                 <label
                   v-for="r in roles"
@@ -125,8 +126,7 @@ const handleRegisterWorker = async () => {
               <div>
                 <label for="city" class="wp-field-label">Ciudad</label>
                 <select id="city" v-model="city" required class="wp-input">
-                  <option value="Cipolletti">Cipolletti</option>
-                  <option value="Neuquén">Neuquén</option>
+                  <option v-for="zona in COVERAGE_ZONES" :key="zona" :value="zona">{{ zona }}</option>
                 </select>
               </div>
               <div>
@@ -174,7 +174,6 @@ const handleRegisterWorker = async () => {
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;600&display=swap');
 
 :root {
   --color-ink: #1E2B22;

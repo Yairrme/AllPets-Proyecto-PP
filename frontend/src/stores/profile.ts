@@ -1,13 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-const API_URL = 'http://localhost:3000'
-
-function getApiErrorMessage(error: any, fallback: string): string {
-  const message = error?.response?.data?.message
-  if (Array.isArray(message)) return message.join(', ')
-  if (typeof message === 'string') return message
-  return fallback
-}
+import { API_URL } from '../config'
+import { getApiErrorMessage } from '../utils/apiError'
 
 export const useProfileStore = defineStore('profile', {
   state: () => ({
@@ -15,17 +9,28 @@ export const useProfileStore = defineStore('profile', {
     reviews: [] as any[],
   }),
   actions: {
+    // El panel del prestador: su perfil completo, aunque todavía no esté aprobado.
     async fetchCaregiverProfile(userId: string) {
       try {
-        const response = await axios.get(`${API_URL}/caregivers/${userId}/profile`)
+        const response = await axios.get(`${API_URL}/users/${userId}/caregiver-profile`)
         this.caregiverProfile = response.data
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error fetching profile', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudo cargar el perfil'))
+        throw new Error(getApiErrorMessage(error, 'No se pudo cargar el perfil'), { cause: error })
       }
     },
     
+    /** Teléfono de un prestador: requiere sesión, no viene en el directorio público. */
+    async fetchCaregiverContact(caregiverId: string): Promise<string | null> {
+      try {
+        const response = await axios.get(`${API_URL}/caregivers/${caregiverId}/contact`)
+        return response.data?.phone ?? null
+      } catch (error: any) {
+        throw new Error(getApiErrorMessage(error, 'No pudimos obtener el teléfono'), { cause: error })
+      }
+    },
+
     async updateCaregiverProfile(userId: string, updateData: any) {
       try {
         const response = await axios.put(`${API_URL}/users/${userId}/caregiver-profile`, updateData)
@@ -33,7 +38,7 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error updating profile', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudo guardar el perfil'))
+        throw new Error(getApiErrorMessage(error, 'No se pudo guardar el perfil'), { cause: error })
       }
     },
     
@@ -51,7 +56,7 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error uploading image', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudo subir la imagen'))
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la imagen'), { cause: error })
       }
     },
     
@@ -68,7 +73,7 @@ export const useProfileStore = defineStore('profile', {
         return response.data
       } catch (error: any) {
         console.error('Error uploading image', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudo subir la foto de perfil'))
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la foto de perfil'), { cause: error })
       }
     },
 
@@ -78,7 +83,7 @@ export const useProfileStore = defineStore('profile', {
         return response.data
       } catch (error: any) {
         console.error('Error fetching user data', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar los datos del usuario'))
+        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar los datos del usuario'), { cause: error })
       }
     },
 
@@ -88,7 +93,7 @@ export const useProfileStore = defineStore('profile', {
         return response.data
       } catch (error: any) {
         console.error('Error updating client profile', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudieron guardar los cambios del perfil'))
+        throw new Error(getApiErrorMessage(error, 'No se pudieron guardar los cambios del perfil'), { cause: error })
       }
     },
     
@@ -108,7 +113,40 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error uploading gallery', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudo subir la galería'))
+        throw new Error(getApiErrorMessage(error, 'No se pudo subir la galería'), { cause: error })
+      }
+    },
+
+    async removeGalleryImage(userId: string, imagePath: string) {
+      try {
+        const filename = encodeURIComponent(imagePath.split('/').pop() ?? '')
+        const response = await axios.delete(`${API_URL}/users/${userId}/caregiver-profile/gallery/${filename}`)
+        this.caregiverProfile = response.data
+        return this.caregiverProfile
+      } catch (error: any) {
+        console.error('Error removing gallery image', error)
+        throw new Error(getApiErrorMessage(error, 'No pudimos eliminar la foto'), { cause: error })
+      }
+    },
+
+    async fetchCertificationDocument(userId: string, filename: string): Promise<Blob> {
+      const response = await axios.get(
+        `${API_URL}/users/${userId}/caregiver-profile/certifications/${encodeURIComponent(filename)}`,
+        { responseType: 'blob' },
+      )
+      return response.data
+    },
+
+    async removeCertificationDocument(userId: string, filename: string) {
+      try {
+        const response = await axios.delete(
+          `${API_URL}/users/${userId}/caregiver-profile/certifications/${encodeURIComponent(filename)}`,
+        )
+        this.caregiverProfile = response.data
+        return this.caregiverProfile
+      } catch (error: any) {
+        console.error('Error removing certification document', error)
+        throw new Error(getApiErrorMessage(error, 'No pudimos eliminar el comprobante'), { cause: error })
       }
     },
 
@@ -128,7 +166,7 @@ export const useProfileStore = defineStore('profile', {
         return this.caregiverProfile
       } catch (error: any) {
         console.error('Error uploading certification documents', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudieron subir los comprobantes de certificación'))
+        throw new Error(getApiErrorMessage(error, 'No se pudieron subir los comprobantes de certificación'), { cause: error })
       }
     },
     
@@ -141,7 +179,7 @@ export const useProfileStore = defineStore('profile', {
         return this.reviews
       } catch (error: any) {
         console.error('Error fetching reviews', error)
-        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar las reseñas'))
+        throw new Error(getApiErrorMessage(error, 'No se pudieron cargar las reseñas'), { cause: error })
       }
     },
 
@@ -151,7 +189,7 @@ export const useProfileStore = defineStore('profile', {
         this.reviews.unshift(response.data)
         return response.data
       } catch (error: any) {
-        throw new Error(getApiErrorMessage(error, 'Error al guardar la reseña'))
+        throw new Error(getApiErrorMessage(error, 'Error al guardar la reseña'), { cause: error })
       }
     }
   }

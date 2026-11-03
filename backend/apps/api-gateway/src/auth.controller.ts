@@ -1,24 +1,13 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Inject,
-  HttpStatus,
-  HttpCode,
-  BadRequestException,
-} from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { Controller, Post, Body, HttpStatus, HttpCode } from '@nestjs/common';
 import { RegisterDto, LoginDto } from 'y/contracts';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { UserClient } from './user.client';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    @Inject('USER_SERVICE') private readonly userServiceClient: ClientProxy,
-  ) {}
+  constructor(private readonly users: UserClient) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -34,17 +23,12 @@ export class AuthController {
     status: 429,
     description: 'Demasiados intentos, probá más tarde',
   })
-  async register(@Body() registerDto: RegisterDto) {
-    try {
-      const result = await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'register_user' }, registerDto),
-      );
-      return result;
-    } catch (error) {
-      throw new BadRequestException(
-        error.message || 'Error al registrar el usuario',
-      );
-    }
+  register(@Body() registerDto: RegisterDto) {
+    return this.users.send(
+      'register_user',
+      registerDto,
+      'Error al registrar el usuario',
+    );
   }
 
   @Post('login')
@@ -61,14 +45,7 @@ export class AuthController {
     status: 429,
     description: 'Demasiados intentos, probá más tarde',
   })
-  async login(@Body() loginDto: LoginDto) {
-    try {
-      const result = await firstValueFrom(
-        this.userServiceClient.send({ cmd: 'login_user' }, loginDto),
-      );
-      return result;
-    } catch (error) {
-      throw new BadRequestException(error.message || 'Error al iniciar sesión');
-    }
+  login(@Body() loginDto: LoginDto) {
+    return this.users.send('login_user', loginDto, 'Error al iniciar sesión');
   }
 }

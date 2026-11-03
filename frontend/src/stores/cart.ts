@@ -3,20 +3,14 @@ import { ref } from 'vue'
 import axios from 'axios'
 import type { Cart } from '../types/shop'
 
-const API_URL = 'http://localhost:3000'
+import { API_URL } from '../config'
+import { getApiErrorMessage } from '../utils/apiError'
 
 const EMPTY_CART: Cart = { items: [], totalItems: 0, total: 0 }
 
-/** Convierte un error de axios en un mensaje para mostrarle al usuario. */
-function getErrorMessage(error: unknown, fallback: string): string {
-  const response = (error as { response?: { status?: number; data?: { message?: unknown } } })
-    ?.response
-  if (response?.status === 401) return 'Tu sesión venció. Volvé a iniciar sesión.'
-  if (response?.status === 503) return 'La tienda no está disponible ahora. Intentá en unos minutos.'
-  const message = response?.data?.message
-  if (Array.isArray(message)) return message.join(', ')
-  if (typeof message === 'string') return message
-  return fallback
+const MENSAJES: Record<number, string> = {
+  401: 'Tu sesión venció. Volvé a iniciar sesión.',
+  503: 'La tienda no está disponible ahora. Intentá en unos minutos.',
 }
 
 // El token JWT lo agrega el interceptor global de axios que configura el
@@ -33,7 +27,7 @@ export const useCartStore = defineStore('cart', () => {
       cart.value = (await action()).data
       return true
     } catch (e) {
-      error.value = getErrorMessage(e, fallback)
+      error.value = getApiErrorMessage(e, fallback, MENSAJES)
       return false
     } finally {
       isLoading.value = false

@@ -14,7 +14,9 @@ import {
   Transport,
 } from '@nestjs/microservices';
 import { Test } from '@nestjs/testing';
+import { unlinkSync } from 'fs';
 import { createServer } from 'net';
+import { basename, join } from 'path';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { MARKET_PATTERNS, MARKET_SERVICE, UserRole } from 'y/contracts';
@@ -24,6 +26,8 @@ import { ProductsController as MarketProductsController } from '../../../market-
 import { ProductsService } from '../../../market-service/src/products/products.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
+import { UserSessionService } from '../auth/user-session.service';
+import { UPLOADS_DIR } from '../uploads/upload-options';
 import { CartController } from './cart.controller';
 import { MarketClient } from './market.client';
 import { ProductsController } from './products.controller';
@@ -37,6 +41,11 @@ const SECRET = 'secreto-de-test';
 const userA = '64b7f0c2a1d3e4f5a6b7c8d9';
 const productId = '64b7f0c2a1d3e4f5a6b7c8da';
 const emptyCart = { items: [], totalItems: 0, total: 0 };
+// PNG válido de 1x1 píxel
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
 
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
@@ -51,6 +60,7 @@ describe('Gateway + Market (TCP)', () => {
   let gateway: INestApplication<App>;
   let market: INestMicroservice;
   let jwt: JwtService;
+  let sessionRole: UserRole = UserRole.CLIENT;
   const cartService = {
     getCart: jest.fn(),
     addItem: jest.fn(),
@@ -66,8 +76,10 @@ describe('Gateway + Market (TCP)', () => {
       transform: true,
     });
 
-  const tokenFor = (sub: string, role: UserRole = UserRole.CLIENT) =>
-    jwt.signAsync({ sub, email: 'a@b.c', role }, { secret: SECRET });
+  const tokenFor = (sub: string, role: UserRole = UserRole.CLIENT) => {
+    sessionRole = role;
+    return jwt.signAsync({ sub, email: 'a@b.c', role }, { secret: SECRET });
+  };
 
   beforeAll(async () => {
     const port = await freePort();
@@ -103,7 +115,15 @@ describe('Gateway + Market (TCP)', () => {
         ]),
       ],
       controllers: [CartController, ProductsController],
-      providers: [JwtAuthGuard, RolesGuard, MarketClient],
+      providers: [
+        JwtAuthGuard,
+        RolesGuard,
+        MarketClient,
+        {
+          provide: UserSessionService,
+          useValue: { find: () => Promise.resolve({ role: sessionRole }) },
+        },
+      ],
     }).compile();
     gateway = gatewayModule.createNestApplication();
     gateway.useGlobalPipes(pipe());
@@ -231,11 +251,29 @@ describe('Gateway + Market (TCP)', () => {
   });
 
   describe('productos', () => {
-    it('GET /products es público', async () => {
-      productsService.findAll.mockResolvedValue([{ title: 'Hueso' }]);
+    it('GET /products es público y pasa filtros y paginación al market', async () => {
+      const page = { data: [{ title: 'Hueso' }] };
+      productsService.findAll.mockResolvedValue(page);
       await request(gateway.getHttpServer())
-        .get('/products')
-        .expect(200, [{ title: 'Hueso' }]);
+        .get('/products?petType=Perro&sort=precio-asc&page=2&limit=5')
+        .expect(200, page);
+      expect(productsService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          petType: 'perro',
+          sort: 'precio-asc',
+          page: 2,
+          limit: 5,
+        }),
+      );
+    });
+
+    it('GET /products: orden desconocido o página enorme -> 400', async () => {
+      await request(gateway.getHttpServer())
+        .get('/products?sort=hack')
+        .expect(400);
+      await request(gateway.getHttpServer())
+        .get('/products?limit=100000')
+        .expect(400);
     });
 
     const product = {
@@ -267,6 +305,54 @@ describe('Gateway + Market (TCP)', () => {
         .send(product)
         .expect(201);
       expect(productsService.create).toHaveBeenCalledWith(product);
+    });
+
+    it('POST /products: imageUrl que no es http(s) ni /uploads -> 400', async () => {
+      const token = await tokenFor(userA, UserRole.ADMIN);
+      await request(gateway.getHttpServer())
+        .post('/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ ...product, imageUrl: 'javascript:alert(1)' })
+        .expect(400);
+      expect(productsService.create).not.toHaveBeenCalled();
+    });
+
+    it('POST /products/image: un cliente recibe 403', async () => {
+      const token = await tokenFor(userA, UserRole.CLIENT);
+      await request(gateway.getHttpServer())
+        .post('/products/image')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', PNG_1PX, {
+          filename: 'foto.png',
+          contentType: 'image/png',
+        })
+        .expect(403);
+    });
+
+    it('POST /products/image: un admin sube la foto y recibe su ruta', async () => {
+      const token = await tokenFor(userA, UserRole.ADMIN);
+      const res = await request(gateway.getHttpServer())
+        .post('/products/image')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', PNG_1PX, {
+          filename: 'foto.png',
+          contentType: 'image/png',
+        })
+        .expect(201);
+      expect(res.body.imageUrl).toMatch(/^\/uploads\/file-[\w-]+\.png$/);
+      unlinkSync(join(UPLOADS_DIR, basename(res.body.imageUrl as string)));
+    });
+
+    it('POST /products/image: rechaza archivos que no son imágenes', async () => {
+      const token = await tokenFor(userA, UserRole.ADMIN);
+      await request(gateway.getHttpServer())
+        .post('/products/image')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('<script></script>'), {
+          filename: 'x.html',
+          contentType: 'text/html',
+        })
+        .expect(400);
     });
 
     it('POST /products: precio negativo -> 400', async () => {

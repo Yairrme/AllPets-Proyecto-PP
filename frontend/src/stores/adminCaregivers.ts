@@ -2,7 +2,8 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import axios from "axios";
 
-const API_URL = "http://localhost:3000";
+import { API_URL } from "../config";
+import { getApiErrorMessage } from "../utils/apiError";
 const PAGE_SIZE = 20;
 
 export type ProfileStatus = "pending" | "approved" | "rejected";
@@ -16,6 +17,12 @@ export interface AdminCaregiver {
   phone?: string | null;
   role: "walker" | "caregiver";
   profile_status: ProfileStatus;
+  /** El prestador acepta clientes nuevos. */
+  is_available: boolean;
+  /** Foto del perfil profesional (/uploads/...). */
+  caregiver_image: string | null;
+  /** Foto de la cuenta de usuario. */
+  profile_image?: string | null;
 }
 
 export interface CaregiverProfile {
@@ -26,11 +33,21 @@ export interface CaregiverProfile {
   experience_years: number;
   accepted_sizes: string[];
   certifications: string[];
+  certification_documents: string[];
+  profile_image: string;
+  gallery_images: string[];
+  rating_avg: number;
+  total_reviews: number;
+  is_available?: boolean;
   status: ProfileStatus;
+  created_at?: string;
 }
 
 export interface CaregiverDetail {
-  user: Omit<AdminCaregiver, "profile_status">;
+  user: Omit<
+    AdminCaregiver,
+    "profile_status" | "is_available" | "caregiver_image"
+  > & { created_at?: string };
   profile: CaregiverProfile;
 }
 
@@ -51,6 +68,7 @@ export interface CaregiverProfileInput {
   experience_years: number;
   accepted_sizes: string[];
   certifications: string[];
+  is_available: boolean;
 }
 
 interface ListResponse {
@@ -63,23 +81,14 @@ interface ListResponse {
   };
 }
 
-/** Convierte un error de axios en un mensaje para mostrarle al usuario. */
-function getErrorMessage(error: unknown, fallback: string): string {
-  const response = (
-    error as { response?: { status?: number; data?: { message?: unknown } } }
-  )?.response;
-  const status = response?.status;
-  if (status === 401) return "Tu sesión venció. Volvé a iniciar sesión.";
-  if (status === 403)
-    return "No tenés permisos de administrador para esta acción.";
-  const message = response?.data?.message;
-  if (Array.isArray(message)) return message.join(", ");
-  if (typeof message === "string") return message;
-  if (status === 404) return "El perfil ya no existe.";
-  if (status === 503)
-    return "El servicio no está disponible ahora. Intentá en unos minutos.";
-  return fallback;
-}
+const MENSAJES: Record<number, string> = {
+  401: "Tu sesión venció. Volvé a iniciar sesión.",
+  403: "No tenés permisos de administrador para esta acción.",
+  404: "El perfil ya no existe.",
+  503: "El servicio no está disponible ahora. Intentá en unos minutos.",
+};
+const getErrorMessage = (error: unknown, fallback: string) =>
+  getApiErrorMessage(error, fallback, MENSAJES);
 
 // El token JWT lo agrega el interceptor global de axios que configura el
 // store de auth (axios.defaults.headers.common.Authorization).
@@ -214,10 +223,35 @@ export const useAdminCaregiversStore = defineStore("adminCaregivers", () => {
               email: email ?? i.email,
               city: city ?? i.city,
               phone: phone ?? i.phone,
+              is_available: profileData.is_available,
             }
           : i,
       );
     }, "No pudimos guardar los cambios.");
+
+  /**
+   * Reemplaza la foto del perfil profesional con un archivo de la PC del admin.
+   * Devuelve la nueva ruta (/uploads/...) o null si falla.
+   */
+  async function uploadCaregiverPhoto(
+    userId: string,
+    file: File,
+  ): Promise<string | null> {
+    let imagePath: string | null = null;
+    await runAction(async () => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await axios.post<CaregiverProfile>(
+        `${API_URL}/users/${userId}/caregiver-profile/image`,
+        formData,
+      );
+      imagePath = response.data.profile_image;
+      items.value = items.value.map((i) =>
+        i._id === userId ? { ...i, caregiver_image: imagePath } : i,
+      );
+    }, "No pudimos subir la foto.");
+    return imagePath;
+  }
 
   const deleteCaregiver = (userId: string) =>
     runAction(async () => {
@@ -241,6 +275,7 @@ export const useAdminCaregiversStore = defineStore("adminCaregivers", () => {
     fetchDetail,
     setStatus,
     saveCaregiver,
+    uploadCaregiverPhoto,
     deleteCaregiver,
   };
 });

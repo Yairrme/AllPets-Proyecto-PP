@@ -7,7 +7,7 @@ import {
   RemoveCartItemPayload,
   UpdateCartItemPayload,
 } from 'y/contracts';
-import { HttpToRpcExceptionFilter } from '../rpc/http-to-rpc.filter';
+import { HttpToRpcExceptionFilter } from 'y/common';
 import { CartView } from './cart-view';
 import { CartService } from './cart.service';
 
@@ -49,5 +49,12 @@ export class CartController {
   @MessagePattern(MARKET_PATTERNS.CART_CLEAR)
   clear(@Payload() { userId }: CartOwnerPayload): Promise<CartView> {
     return this.cartService.clear(userId);
+  }
+
+  @MessagePattern(MARKET_PATTERNS.CART_DELETE)
+  deleteCart(
+    @Payload() { userId }: CartOwnerPayload,
+  ): Promise<{ deleted: boolean }> {
+    return this.cartService.deleteCart(userId);
   }
 }
