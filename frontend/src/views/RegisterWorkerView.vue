@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import PrivacyPolicyField from '../components/PrivacyPolicyField.vue'
 import walkersHeroImg from '../assets/walkers-hero.webp'
 
 const router = useRouter()
@@ -13,6 +14,13 @@ const password = ref('')
 const city = ref('Cipolletti')
 const phone = ref('')
 const role = ref('walker')
+// Aceptación de políticas de privacidad: debe comenzar desmarcada
+const acceptedPrivacyPolicy = ref(false)
+const policyError = ref('')
+watch(acceptedPrivacyPolicy, (accepted) => {
+  if (accepted) policyError.value = ''
+})
+
 const errorMsg = ref('')
 const isLoading = ref(false)
 
@@ -45,9 +53,22 @@ const benefits = [
 
 const handleRegisterWorker = async () => {
   errorMsg.value = ''
+  if (!acceptedPrivacyPolicy.value) {
+    policyError.value = 'Debes aceptar las políticas de privacidad para registrarte.'
+    return
+  }
+  policyError.value = ''
   isLoading.value = true
   try {
-    await authStore.register(name.value, email.value, password.value, city.value, phone.value, role.value)
+    await authStore.register(
+      name.value,
+      email.value,
+      password.value,
+      city.value,
+      phone.value,
+      role.value,
+      acceptedPrivacyPolicy.value,
+    )
     await authStore.login(email.value, password.value)
     router.push('/onboarding-trabajador')
   } catch (error: any) {
@@ -144,6 +165,8 @@ const handleRegisterWorker = async () => {
               <label for="password" class="wp-field-label">Contraseña</label>
               <input id="password" type="password" required minlength="6" autocomplete="new-password" v-model="password" class="wp-input" placeholder="Mínimo 6 caracteres" />
             </div>
+
+            <PrivacyPolicyField v-model="acceptedPrivacyPolicy" :error="policyError" variant="worker" input-id="privacy-policy" />
 
             <p v-if="errorMsg" role="alert" class="wp-error">{{ errorMsg }}</p>
 

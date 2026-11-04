@@ -46,7 +46,10 @@ export class CartController {
   @ApiResponse({ status: 201, description: 'Producto agregado al carrito' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
   @ApiResponse({ status: 404, description: 'Producto no encontrado' })
-  @ApiResponse({ status: 409, description: 'Stock insuficiente' })
+  @ApiResponse({
+    status: 409,
+    description: 'Stock insuficiente para la cantidad pedida',
+  })
   addItem(@CurrentUserId() userId: string, @Body() dto: AddCartItemDto) {
     return this.market.send(MARKET_PATTERNS.CART_ADD_ITEM, { userId, ...dto });
   }
@@ -73,13 +76,16 @@ export class CartController {
   }
 
   @Delete('items/:productId')
-  @ApiOperation({ summary: 'Quitar un producto del carrito' })
-  @ApiResponse({ status: 200, description: 'Producto quitado del carrito' })
-  @ApiResponse({ status: 400, description: 'ID con formato inválido' })
-  @ApiResponse({
-    status: 404,
-    description: 'El producto no está en el carrito',
+  @ApiOperation({
+    summary: 'Quitar un producto del carrito',
+    description:
+      'Es idempotente: si el producto no estaba en el carrito, responde 200 con el carrito sin cambios.',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Carrito actualizado (sin el producto)',
+  })
+  @ApiResponse({ status: 400, description: 'ID con formato inválido' })
   removeItem(
     @CurrentUserId() userId: string,
     @Param() { productId }: CartItemParamDto,

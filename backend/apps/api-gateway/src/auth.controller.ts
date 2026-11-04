@@ -31,10 +31,6 @@ export class AuthController {
     description:
       'Datos inválidos, políticas de privacidad no aceptadas (acceptedPrivacyPolicy debe ser true) o email ya en uso',
   })
-  @ApiResponse({
-    status: 429,
-    description: 'Demasiados intentos, probá más tarde',
-  })
   async register(@Body() registerDto: RegisterDto) {
     try {
       const result = await firstValueFrom(
@@ -57,10 +53,10 @@ export class AuthController {
     status: 200,
     description: 'Login exitoso, devuelve JWT token',
   })
-  @ApiResponse({ status: 400, description: 'Credenciales inválidas' })
   @ApiResponse({
-    status: 429,
-    description: 'Demasiados intentos, probá más tarde',
+    status: 400,
+    description:
+      'Datos inválidos o credenciales incorrectas (el gateway responde 400, no 401)',
   })
   async login(@Body() loginDto: LoginDto) {
     try {

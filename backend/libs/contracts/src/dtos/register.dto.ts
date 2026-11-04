@@ -34,6 +34,7 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'juan@allpets.com',
+    format: 'email',
     description: 'Correo electrónico único del usuario',
   })
   @IsEmail({}, { message: 'El formato del email no es válido.' })
@@ -42,7 +43,9 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'Password123!',
-    description: 'Contraseña segura (mínimo 6 caracteres)',
+    minLength: 6,
+    maxLength: 72,
+    description: 'Contraseña (entre 6 y 72 caracteres)',
   })
   @IsString()
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres.' })
@@ -65,8 +68,9 @@ export class RegisterDto {
 
   @ApiPropertyOptional({
     example: '+5492991234567',
+    maxLength: 30,
     description:
-      'Número de teléfono (obligatorio para cuidadores y paseadores)',
+      'Número de teléfono (máximo 30 caracteres). Obligatorio para paseadores y cuidadores; opcional para clientes.',
   })
   @ValidateIf((value) => value.role !== UserRole.CLIENT || value.phone != null)
   @IsString({ message: 'El teléfono debe ser texto.' })

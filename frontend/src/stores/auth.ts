@@ -39,7 +39,15 @@ export const useAuthStore = defineStore('auth', {
         throw new Error(getApiErrorMessage(error, 'Error al iniciar sesión'))
       }
     },
-    async register(name: string, email: string, password: string, city: string, phone: string, role: string) {
+    async register(
+      name: string,
+      email: string,
+      password: string,
+      city: string,
+      phone: string,
+      role: string,
+      acceptedPrivacyPolicy: boolean,
+    ) {
       try {
         const response = await axios.post(`${API_URL}/auth/register`, {
           name,
@@ -47,6 +55,7 @@ export const useAuthStore = defineStore('auth', {
           password,
           city,
           role,
+          acceptedPrivacyPolicy,
           ...(phone.trim() ? { phone: phone.trim() } : {})
         })
         

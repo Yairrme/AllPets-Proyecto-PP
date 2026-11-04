@@ -11,40 +11,75 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'Alimento Perro Adulto' })
+  @ApiProperty({
+    example: 'Alimento Perro Adulto',
+    minLength: 2,
+    maxLength: 120,
+    description: 'Nombre del producto (entre 2 y 120 caracteres)',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(120)
   title: string;
 
-  @ApiProperty({ example: 'Bolsa de 15kg, nutrición completa' })
+  @ApiProperty({
+    example: 'Bolsa de 15kg, nutrición completa',
+    minLength: 2,
+    maxLength: 1000,
+    description: 'Descripción del producto (entre 2 y 1000 caracteres)',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(1000)
   description: string;
 
-  @ApiProperty({ example: 25.5, description: 'Precio con hasta 2 decimales' })
+  @ApiProperty({
+    type: 'number',
+    example: 25.5,
+    minimum: 0,
+    maximum: 10_000_000,
+    description: 'Precio, de 0 a 10.000.000, con hasta 2 decimales',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(10_000_000)
   price: number;
 
-  @ApiProperty({ example: 'perro' })
+  @ApiProperty({
+    example: 'perro',
+    maxLength: 60,
+    description:
+      'Tipo de mascota al que apunta el producto (texto libre, máx. 60)',
+  })
   @IsString()
   @MaxLength(60)
   petType: string;
 
-  @ApiProperty({ example: 'alimento' })
+  @ApiProperty({
+    example: 'alimento',
+    maxLength: 60,
+    description: 'Categoría del producto (texto libre, máx. 60)',
+  })
   @IsString()
   @MaxLength(60)
   category: string;
 
-  @ApiProperty({ example: 'https://…/foto.jpg' })
+  @ApiProperty({
+    example: 'https://ejemplo.com/foto.jpg',
+    maxLength: 500,
+    description: 'URL o ruta de la imagen (texto, máx. 500 caracteres)',
+  })
   @IsString()
   @MaxLength(500)
   imageUrl: string;
 
-  @ApiProperty({ example: 10, minimum: 0 })
+  @ApiProperty({
+    type: 'integer',
+    example: 10,
+    minimum: 0,
+    maximum: 1_000_000,
+    description: 'Unidades en stock (entero de 0 a 1.000.000)',
+  })
   @IsInt()
   @Min(0)
   @Max(1_000_000)

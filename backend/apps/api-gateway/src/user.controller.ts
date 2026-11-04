@@ -37,7 +37,6 @@ import {
   ApiParam,
   ApiConsumes,
   ApiBody,
-  ApiForbiddenResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -53,9 +52,6 @@ const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
 @ApiUnauthorizedResponse({ description: 'Token ausente, inválido o vencido' })
-@ApiForbiddenResponse({
-  description: 'No tenés el rol requerido o no sos el dueño del recurso',
-})
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
@@ -69,9 +65,14 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Usuario encontrado' })
   @ApiResponse({
     status: 400,
-    description: 'Usuario no encontrado o ID inválido',
+    description:
+      'Usuario no encontrado o ID inválido (el gateway responde 400)',
   })
-  @ApiResponse({ status: 403, description: 'Solo puedes ver tu propio perfil' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Solo puedes ver tu propio perfil (el ADMIN puede ver cualquiera)',
+  })
   async getUserById(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
@@ -97,8 +98,14 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'ID del usuario a actualizar' })
   @ApiResponse({ status: 200, description: 'Usuario actualizado exitosamente' })
   @ApiResponse({
+    status: 400,
+    description:
+      'Datos inválidos, campo no permitido, usuario inexistente o email ya en uso',
+  })
+  @ApiResponse({
     status: 403,
-    description: 'Solo puedes modificar tu propio perfil',
+    description:
+      'Solo puedes modificar tu propio perfil (el ADMIN puede modificar cualquiera)',
   })
   async updateUser(
     @Param('id') id: string,
@@ -127,9 +134,11 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'ID del usuario a eliminar' })
   @ApiResponse({ status: 200, description: 'Usuario eliminado exitosamente' })
   @ApiResponse({
-    status: 403,
-    description: 'Acceso denegado (Requiere rol ADMIN)',
+    status: 400,
+    description:
+      'ID inválido o usuario no encontrado (el gateway responde 400)',
   })
+  @ApiResponse({ status: 403, description: 'Requiere rol ADMIN' })
   async deleteUser(@Param('id') id: string) {
     try {
       return await firstValueFrom(
@@ -145,11 +154,12 @@ export class UserController {
   @Get('users')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Listar todos los usuarios (Solo Admin)' })
-  @ApiResponse({ status: 200, description: 'Listado de usuarios' })
+  @ApiResponse({ status: 200, description: 'Listado paginado de usuarios' })
   @ApiResponse({
-    status: 403,
-    description: 'Acceso denegado (Requiere rol ADMIN)',
+    status: 400,
+    description: 'page o limit inválidos (page ≥ 1, limit entre 1 y 100)',
   })
+  @ApiResponse({ status: 403, description: 'Requiere rol ADMIN' })
   async getAllUsers(@Query() pagination: PaginationDto) {
     try {
       return await firstValueFrom(
@@ -166,6 +176,10 @@ export class UserController {
   @ApiOperation({ summary: 'Obtener perfil de cuidador detallado' })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiResponse({ status: 200, description: 'Perfil obtenido exitosamente' })
+  @ApiResponse({
+    status: 400,
+    description: 'ID inválido o perfil no encontrado (el gateway responde 400)',
+  })
   async getCaregiverProfile(@Param('userId') userId: string) {
     try {
       return await firstValueFrom(
@@ -190,8 +204,14 @@ export class UserController {
   @ApiParam({ name: 'userId', description: 'ID del cuidador a actualizar' })
   @ApiResponse({ status: 200, description: 'Perfil actualizado exitosamente' })
   @ApiResponse({
+    status: 400,
+    description:
+      'Datos inválidos (límites de longitud, rutas /uploads/..., tamaños permitidos), campo no permitido o perfil inexistente',
+  })
+  @ApiResponse({
     status: 403,
-    description: 'Solo puedes modificar tu propio perfil',
+    description:
+      'Requiere rol WALKER, CAREGIVER o ADMIN, y ser el dueño del perfil (el ADMIN puede operar sobre cualquiera)',
   })
   async updateCaregiverProfile(
     @Param('userId') userId: string,
@@ -224,7 +244,7 @@ export class UserController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'Archivo de imagen (JPG, PNG, etc.)',
+          description: 'Imagen JPG, PNG o WEBP (máx. 5 MB)',
         },
       },
     },
@@ -232,6 +252,19 @@ export class UserController {
   @ApiResponse({
     status: 200,
     description: 'Foto de perfil subida exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'No se envió el archivo (campo "file") o el formato no es JPG, PNG o WEBP',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'No sos el dueño del perfil ni ADMIN',
+  })
+  @ApiResponse({
+    status: 413,
+    description: 'El archivo supera el máximo de 5 MB',
   })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
@@ -273,12 +306,26 @@ export class UserController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'Archivo de imagen profesional',
+          description: 'Imagen JPG, PNG o WEBP (máx. 5 MB)',
         },
       },
     },
   })
   @ApiResponse({ status: 200, description: 'Foto profesional subida' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'No se envió el archivo (campo "file"), el formato no es JPG, PNG o WEBP o el perfil no existe',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Requiere rol WALKER, CAREGIVER o ADMIN, y ser el dueño del perfil (el ADMIN puede operar sobre cualquiera)',
+  })
+  @ApiResponse({
+    status: 413,
+    description: 'El archivo supera el máximo de 5 MB',
+  })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FileInterceptor('file', multerOptions))
@@ -318,16 +365,31 @@ export class UserController {
       properties: {
         files: {
           type: 'array',
+          maxItems: 10,
           items: {
             type: 'string',
             format: 'binary',
           },
-          description: 'Múltiples fotos de galería',
+          description: 'Hasta 10 imágenes JPG, PNG o WEBP (máx. 5 MB cada una)',
         },
       },
     },
   })
   @ApiResponse({ status: 200, description: 'Imágenes agregadas a la galería' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'No se enviaron archivos (campo "files"), más de 10 archivos, formato distinto de JPG, PNG o WEBP o perfil inexistente',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Requiere rol WALKER, CAREGIVER o ADMIN, y ser el dueño del perfil (el ADMIN puede operar sobre cualquiera)',
+  })
+  @ApiResponse({
+    status: 413,
+    description: 'Algún archivo supera el máximo de 5 MB',
+  })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
   @UseInterceptors(FilesInterceptor('files', 10, multerOptions))
@@ -385,12 +447,13 @@ export class UserController {
       properties: {
         files: {
           type: 'array',
+          maxItems: 10,
           items: {
             type: 'string',
             format: 'binary',
           },
           description:
-            'Fotos o comprobantes de certificaciones/permisos municipales',
+            'Hasta 10 imágenes JPG, PNG o WEBP (máx. 5 MB cada una) de certificaciones o permisos municipales',
         },
       },
     },
@@ -398,6 +461,20 @@ export class UserController {
   @ApiResponse({
     status: 200,
     description: 'Comprobantes de certificación agregados al perfil',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'No se enviaron archivos (campo "files"), más de 10 archivos, formato distinto de JPG, PNG o WEBP o perfil inexistente',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Requiere rol WALKER, CAREGIVER o ADMIN, y ser el dueño del perfil (el ADMIN puede operar sobre cualquiera)',
+  })
+  @ApiResponse({
+    status: 413,
+    description: 'Algún archivo supera el máximo de 5 MB',
   })
   @Throttle(UPLOAD_THROTTLE)
   @UseGuards(OwnerOrAdminGuard)
@@ -451,8 +528,10 @@ export class UserController {
   @ApiResponse({ status: 201, description: 'Reseña creada exitosamente' })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o error al registrar la reseña',
+    description:
+      'Datos inválidos (score entre 1 y 5, caregiver_id obligatorio) o error del servicio: cuidador inexistente, autorreseña o reseña duplicada',
   })
+  @ApiResponse({ status: 403, description: 'Requiere rol CLIENT' })
   async createReview(
     @Body() createReviewDto: CreateReviewDto,
     @Req() request: AuthenticatedRequest,
@@ -474,7 +553,12 @@ export class UserController {
   @Get('reviews/caregiver/:caregiverId')
   @ApiOperation({ summary: 'Obtener reseñas de un cuidador (Paginado)' })
   @ApiParam({ name: 'caregiverId', description: 'ID del cuidador' })
-  @ApiResponse({ status: 200, description: 'Listado de reseñas' })
+  @ApiResponse({ status: 200, description: 'Listado paginado de reseñas' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'ID inválido o page/limit inválidos (page ≥ 1, limit entre 1 y 100)',
+  })
   async getReviewsForCaregiver(
     @Param('caregiverId') caregiverId: string,
     @Query() pagination: PaginationDto,

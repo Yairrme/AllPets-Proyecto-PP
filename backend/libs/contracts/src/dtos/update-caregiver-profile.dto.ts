@@ -20,12 +20,17 @@ import {
 const UPLOAD_PATH_REGEX =
   /^\/uploads\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp|gif)$/i;
 const UPLOAD_PATH_MESSAGE = 'Ruta de imagen no válida.';
+/** Patrón (OpenAPI) equivalente a UPLOAD_PATH_REGEX, para documentarlo. */
+const UPLOAD_PATH_PATTERN =
+  '^/uploads/[A-Za-z0-9_-]+\\.(jpg|jpeg|png|webp|gif)$';
+const ACCEPTED_SIZES = ['pequeño', 'mediano', 'grande'];
 
 export class UpdateCaregiverProfileDto {
   @ApiPropertyOptional({
     example:
       'Amante de los animales con más de 3 años de experiencia en paseos.',
-    description: 'Biografía / descripción del cuidador',
+    maxLength: 500,
+    description: 'Biografía / descripción del cuidador (máx. 500 caracteres)',
   })
   @IsOptional()
   @IsString()
@@ -34,8 +39,9 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['Paseo de perros', 'Cuidado a domicilio', 'Guardería canina'],
-    description: 'Lista de servicios ofrecidos',
+    description: 'Lista de servicios ofrecidos (máx. 20)',
     type: [String],
+    maxItems: 20,
   })
   @IsOptional()
   @IsArray()
@@ -45,8 +51,9 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['Lunes a Viernes 08:00 - 18:00', 'Sábados por la mañana'],
-    description: 'Disponibilidad horaria',
+    description: 'Disponibilidad horaria (máx. 50 ítems)',
     type: [String],
+    maxItems: 50,
   })
   @IsOptional()
   @IsArray()
@@ -56,7 +63,8 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: 4500,
-    description: 'Tarifa por hora en pesos',
+    minimum: 0,
+    description: 'Tarifa por hora en pesos (mínimo 0)',
   })
   @IsOptional()
   @Type(() => Number)
@@ -66,7 +74,8 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: 3,
-    description: 'Años de experiencia del paseador/cuidador',
+    minimum: 0,
+    description: 'Años de experiencia del paseador/cuidador (mínimo 0)',
   })
   @IsOptional()
   @Type(() => Number)
@@ -76,19 +85,22 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['pequeño', 'mediano', 'grande'],
-    description: 'Tamaños de mascotas aceptados',
-    type: [String],
+    description: 'Tamaños de mascotas aceptados (máx. 3, solo estos valores)',
+    isArray: true,
+    enum: ACCEPTED_SIZES,
+    maxItems: 3,
   })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(3)
-  @IsIn(['pequeño', 'mediano', 'grande'], { each: true })
+  @IsIn(ACCEPTED_SIZES, { each: true })
   accepted_sizes?: string[];
 
   @ApiPropertyOptional({
     example: '+5492991234567',
+    maxLength: 50,
     description:
-      'Teléfono de contacto del trabajador (actualiza el documento User)',
+      'Teléfono de contacto del trabajador, máx. 50 caracteres (actualiza el documento User)',
   })
   @IsOptional()
   @IsString()
@@ -97,7 +109,10 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: '/uploads/profile-123.jpg',
-    description: 'Ruta o URL de la imagen de perfil',
+    maxLength: 500,
+    pattern: UPLOAD_PATH_PATTERN,
+    description:
+      'Ruta de una imagen ya subida por la API (/uploads/<archivo>.jpg|jpeg|png|webp|gif). No acepta URLs externas.',
   })
   @IsOptional()
   @IsString()
@@ -107,8 +122,10 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['/uploads/gallery-1.jpg', '/uploads/gallery-2.jpg'],
-    description: 'Rutas de las fotos de la galería',
+    description:
+      'Rutas de las fotos de la galería, máx. 20. Cada una con formato /uploads/<archivo>.jpg|jpeg|png|webp|gif.',
     type: [String],
+    maxItems: 20,
   })
   @IsOptional()
   @IsArray()
@@ -119,8 +136,10 @@ export class UpdateCaregiverProfileDto {
 
   @ApiPropertyOptional({
     example: ['Permiso Municipal Cipolletti', 'Primeros Auxilios Veterinarios'],
-    description: 'Certificaciones y permisos municipales del paseador/cuidador',
+    description:
+      'Certificaciones y permisos municipales del paseador/cuidador (máx. 30 ítems de texto)',
     type: [String],
+    maxItems: 30,
   })
   @IsOptional()
   @IsArray()
@@ -131,8 +150,9 @@ export class UpdateCaregiverProfileDto {
   @ApiPropertyOptional({
     example: ['/uploads/cert-1.jpg'],
     description:
-      'Rutas de fotos o comprobantes de certificaciones y permisos municipales',
+      'Rutas de comprobantes ya subidos por la API, máx. 20. Cada una con formato /uploads/<archivo>.jpg|jpeg|png|webp|gif.',
     type: [String],
+    maxItems: 20,
   })
   @IsOptional()
   @IsArray()

@@ -11,7 +11,9 @@ import {
 export class UpdateUserDto {
   @ApiPropertyOptional({
     example: 'Juan Pérez',
-    description: 'Nombre completo del usuario',
+    minLength: 2,
+    maxLength: 100,
+    description: 'Nombre completo del usuario (entre 2 y 100 caracteres)',
   })
   @IsOptional()
   @IsString()
@@ -21,6 +23,7 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({
     example: 'juan@allpets.com',
+    format: 'email',
     description: 'Correo electrónico del usuario',
   })
   @IsOptional()
@@ -41,7 +44,8 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({
     example: '+5492991234567',
-    description: 'Número de teléfono del usuario',
+    maxLength: 50,
+    description: 'Número de teléfono del usuario (máximo 50 caracteres)',
   })
   @IsOptional()
   @IsString()

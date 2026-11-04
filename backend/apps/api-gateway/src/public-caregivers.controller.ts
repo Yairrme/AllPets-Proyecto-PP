@@ -27,6 +27,10 @@ export class PublicCaregiversController {
     summary: 'Listar cuidadores y paseadores activos (Paginado)',
   })
   @ApiResponse({ status: 200, description: 'Listado obtenido exitosamente' })
+  @ApiResponse({
+    status: 400,
+    description: 'page o limit inválidos (page ≥ 1, limit entre 1 y 100)',
+  })
   async getCaregivers(@Query() pagination: PaginationDto) {
     try {
       return await firstValueFrom(
@@ -43,6 +47,10 @@ export class PublicCaregiversController {
   @ApiOperation({ summary: 'Obtener perfil público de un cuidador' })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiResponse({ status: 200, description: 'Perfil obtenido exitosamente' })
+  @ApiResponse({
+    status: 400,
+    description: 'ID inválido o perfil no encontrado (el gateway responde 400)',
+  })
   async getCaregiverProfile(@Param('userId') userId: string) {
     try {
       return await firstValueFrom(
@@ -62,6 +70,11 @@ export class PublicCaregiversController {
   @ApiOperation({ summary: 'Obtener reseñas públicas de un cuidador' })
   @ApiParam({ name: 'caregiverId', description: 'ID del cuidador' })
   @ApiResponse({ status: 200, description: 'Reseñas obtenidas exitosamente' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'ID inválido o page/limit inválidos (page ≥ 1, limit entre 1 y 100)',
+  })
   async getReviews(
     @Param('caregiverId') caregiverId: string,
     @Query() pagination: PaginationDto,

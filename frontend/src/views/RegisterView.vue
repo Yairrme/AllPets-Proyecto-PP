@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import PrivacyPolicyField from '../components/PrivacyPolicyField.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,17 +14,29 @@ const password = ref('')
 const city = ref('Cipolletti')
 const phone = ref('')
 
+// Aceptación de políticas de privacidad: debe comenzar desmarcada
+const acceptedPrivacyPolicy = ref(false)
+const policyError = ref('')
+watch(acceptedPrivacyPolicy, (accepted) => {
+  if (accepted) policyError.value = ''
+})
+
 const errorMsg = ref('')
 const isLoading = ref(false)
 
 // Función para registrar un nuevo cliente
 const handleRegister = async () => {
   errorMsg.value = ''
+  if (!acceptedPrivacyPolicy.value) {
+    policyError.value = 'Debes aceptar las políticas de privacidad para registrarte.'
+    return
+  }
+  policyError.value = ''
   isLoading.value = true
   try {
     // Por defecto desde este formulario se registra con el rol 'client'
     // La conexión se realiza a través de Axios en nuestro authStore (Pinia)
-    await authStore.register(name.value, email.value, password.value, city.value, phone.value, 'client')
+    await authStore.register(name.value, email.value, password.value, city.value, phone.value, 'client', acceptedPrivacyPolicy.value)
     
     // Una vez completado exitosamente el registro, redirigimos al login
     router.push('/login')
@@ -91,6 +104,8 @@ const handleRegister = async () => {
               class="appearance-none rounded-md relative block w-full px-3 py-2.5 border border-gray-300 placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 sm:text-sm transition-shadow"
               placeholder="299 123-4567" />
           </div>
+          <!-- Aceptación de políticas de privacidad -->
+          <PrivacyPolicyField v-model="acceptedPrivacyPolicy" :error="policyError" input-id="privacy-policy" />
         </div>
 
         <div v-if="errorMsg" class="text-red-700 text-sm font-medium text-center bg-red-100 p-3 rounded-md border border-red-200">

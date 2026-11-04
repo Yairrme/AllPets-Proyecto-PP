@@ -4,9 +4,11 @@ import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class PaginationDto {
   @ApiPropertyOptional({
+    type: 'integer',
     example: 1,
     default: 1,
-    description: 'Número de página',
+    minimum: 1,
+    description: 'Número de página (entero, mínimo 1)',
   })
   @IsOptional()
   @Type(() => Number)
@@ -15,9 +17,12 @@ export class PaginationDto {
   page = 1;
 
   @ApiPropertyOptional({
+    type: 'integer',
     example: 20,
     default: 20,
-    description: 'Cantidad de elementos por página',
+    minimum: 1,
+    maximum: 100,
+    description: 'Cantidad de elementos por página (entero, de 1 a 100)',
   })
   @IsOptional()
   @Type(() => Number)

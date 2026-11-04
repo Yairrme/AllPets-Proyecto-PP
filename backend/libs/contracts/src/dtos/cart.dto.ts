@@ -11,7 +11,13 @@ export class AddCartItemDto {
   @IsMongoId()
   productId: string;
 
-  @ApiProperty({ example: 1, minimum: 1, maximum: MAX_QUANTITY_PER_ITEM })
+  @ApiProperty({
+    type: 'integer',
+    example: 1,
+    minimum: 1,
+    maximum: MAX_QUANTITY_PER_ITEM,
+    description: 'Cantidad a agregar (entero de 1 a 99)',
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_QUANTITY_PER_ITEM)
@@ -19,7 +25,13 @@ export class AddCartItemDto {
 }
 
 export class UpdateCartItemDto {
-  @ApiProperty({ example: 2, minimum: 1, maximum: MAX_QUANTITY_PER_ITEM })
+  @ApiProperty({
+    type: 'integer',
+    example: 2,
+    minimum: 1,
+    maximum: MAX_QUANTITY_PER_ITEM,
+    description: 'Nueva cantidad total del producto (entero de 1 a 99)',
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_QUANTITY_PER_ITEM)
