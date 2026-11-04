@@ -35,7 +35,8 @@ las reconstruye con `rpcErrorToHttpException` / `MarketClient`. Así el frontend
 ## Configuración (`.env`)
 
 Copiá [`.env.example`](.env.example) como `.env` dentro de `backend/` y completá los secretos.
-Los tres servicios leen el mismo archivo.
+Los tres servicios leen el mismo archivo. Al arrancar, cada uno valida sus variables con un esquema
+de Joi (`libs/common/src/config/env.validation.ts`): si falta una obligatoria o es inválida, no arranca.
 
 ```bash
 cp .env.example .env
@@ -106,7 +107,7 @@ Resumen:
 | Usuarios | `GET/PUT/DELETE /users/:id`, `GET /users` (admin), `POST /users/:userId/image` |
 | Perfil profesional | `GET/PUT /users/:userId/caregiver-profile`, subidas de `image`, `gallery`, `certifications`; `DELETE` de una foto o comprobante; `GET` de un comprobante |
 | Directorio público | `GET /caregivers` (filtros y paginación), `GET /caregivers/:userId`, `GET /caregivers/:userId/profile`, `GET /caregivers/:caregiverId/reviews`; `GET /caregivers/:userId/contact` (con sesión) |
-| Reseñas | `POST /reviews` (client), `GET /reviews/caregiver/:caregiverId` |
+| Reseñas | `POST /reviews` (client), `PATCH/DELETE /reviews/:reviewId` (autor), `GET /reviews/caregiver/:caregiverId`, `GET /reviews/caregiver/:caregiverId/mine` (client) |
 | Administración | `GET /admin/caregivers`, `GET /admin/caregivers/:userId`, `PATCH /admin/caregivers/:userId/status` |
 | Tienda | `GET /products` (filtros, paginación y opciones de filtro), `GET /products/:id`, `POST/PATCH/DELETE /products` y `POST /products/image` (admin), `/cart` y `/cart/items` |
 | Salud | `GET /health` |

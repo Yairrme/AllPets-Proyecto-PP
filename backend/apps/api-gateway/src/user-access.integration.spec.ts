@@ -275,6 +275,85 @@ describe('Acceso a datos privados de los prestadores', () => {
     });
   });
 
+  describe('reseñas: editar y eliminar', () => {
+    const reviewId = '64b7f0c2a1d3e4f5a6b7c8db';
+    const url = `/reviews/${reviewId}`;
+
+    it('el autor sale del token, no de lo que mande el cliente', async () => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server()
+        .patch(url)
+        .set(headers)
+        .send({ score: 3, comment: 'bien' })
+        .expect(200);
+      expect(users.send).toHaveBeenCalledWith(
+        'update_review',
+        {
+          review_id: reviewId,
+          reviewer_id: owner,
+          changes: { score: 3, comment: 'bien' },
+        },
+        expect.any(String),
+      );
+    });
+
+    it('no se puede enviar otro autor ni otro prestador en el body', async () => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server()
+        .patch(url)
+        .set(headers)
+        .send({ reviewer_id: other, caregiver_id: other })
+        .expect(400);
+      expect(users.send).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['calificación fuera de rango', { score: 9 }],
+      ['calificación decimal', { score: 2.5 }],
+      ['comentario demasiado largo', { comment: 'x'.repeat(501) }],
+    ])('rechaza con 400: %s', async (_name, body) => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server().patch(url).set(headers).send(body).expect(400);
+    });
+
+    it('sin sesión responde 401 y un prestador 403', async () => {
+      await server().delete(url).expect(401);
+      await server()
+        .delete(url)
+        .set(await auth(owner, UserRole.WALKER))
+        .expect(403);
+      expect(users.send).not.toHaveBeenCalled();
+    });
+
+    it('un ID mal formado responde 400', async () => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server().delete('/reviews/abc').set(headers).expect(400);
+    });
+
+    it('eliminar usa el usuario del token', async () => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server().delete(url).set(headers).expect(200);
+      expect(users.send).toHaveBeenCalledWith(
+        'delete_review',
+        { review_id: reviewId, reviewer_id: owner },
+        expect.any(String),
+      );
+    });
+
+    it('mi reseña se consulta con el usuario del token', async () => {
+      const headers = await auth(owner, UserRole.CLIENT);
+      await server()
+        .get(`/reviews/caregiver/${other}/mine`)
+        .set(headers)
+        .expect(200);
+      expect(users.send).toHaveBeenCalledWith(
+        'get_my_review',
+        { caregiver_id: other, reviewer_id: owner },
+        expect.any(String),
+      );
+    });
+  });
+
   describe('eliminar una cuenta', () => {
     it('invalida la sesión, borra el carrito y no devuelve las rutas internas', async () => {
       users.send.mockResolvedValue({

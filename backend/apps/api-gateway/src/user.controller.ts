@@ -5,6 +5,7 @@ import {
   Put,
   Body,
   Param,
+  Patch,
   Header,
   HttpStatus,
   HttpCode,
@@ -26,7 +27,9 @@ import {
   CreateReviewDto,
   MARKET_PATTERNS,
   PaginationDto,
+  ReviewIdParamDto,
   UpdateCaregiverProfileDto,
+  UpdateReviewDto,
   UpdateUserDto,
   UserRole,
 } from 'y/contracts';
@@ -467,6 +470,56 @@ export class UserController {
       'create_review',
       { ...createReviewDto, reviewer_id: request.user.sub },
       'Error al crear la reseña',
+    );
+  }
+
+  @Patch('reviews/:reviewId')
+  @Roles(UserRole.CLIENT)
+  @ApiOperation({ summary: 'Editar mi reseña (solo su autor)' })
+  @ApiResponse({ status: 200, description: 'Reseña actualizada' })
+  @ApiResponse({ status: 404, description: 'No existe o no es tuya' })
+  updateReview(
+    @Param() { reviewId }: ReviewIdParamDto,
+    @Body() changes: UpdateReviewDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.users.send(
+      'update_review',
+      { review_id: reviewId, reviewer_id: request.user.sub, changes },
+      'Error al actualizar la reseña',
+    );
+  }
+
+  @Delete('reviews/:reviewId')
+  @Roles(UserRole.CLIENT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Eliminar mi reseña (solo su autor)' })
+  @ApiResponse({ status: 200, description: 'Reseña eliminada' })
+  @ApiResponse({ status: 404, description: 'No existe o no es tuya' })
+  deleteReview(
+    @Param() { reviewId }: ReviewIdParamDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.users.send(
+      'delete_review',
+      { review_id: reviewId, reviewer_id: request.user.sub },
+      'Error al eliminar la reseña',
+    );
+  }
+
+  @Get('reviews/caregiver/:caregiverId/mine')
+  @Roles(UserRole.CLIENT)
+  @ApiOperation({ summary: 'Mi reseña para este cuidador, si dejé una' })
+  @ApiParam({ name: 'caregiverId', description: 'ID del cuidador' })
+  @ApiResponse({ status: 200, description: '{ review } o { review: null }' })
+  getMyReview(
+    @Param('caregiverId') caregiverId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.users.send(
+      'get_my_review',
+      { caregiver_id: caregiverId, reviewer_id: request.user.sub },
+      'Error al obtener tu reseña',
     );
   }
 

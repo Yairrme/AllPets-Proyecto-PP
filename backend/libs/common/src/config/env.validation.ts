@@ -1,87 +1,72 @@
-type Environment = Record<string, unknown>;
+import * as Joi from 'joi';
 
 const MIN_SECRET_LENGTH_IN_PRODUCTION = 32;
+const PHONE_KEY_BYTES = 32;
 
-const isProduction = (environment: Environment) =>
-  environment.NODE_ENV === 'production';
+/** Una variable vacía o con solo espacios cuenta como si no estuviera definida. */
+const blank = Joi.string().allow('').pattern(/^\s*$/);
 
-function requiredString(environment: Environment, name: string): string {
-  const value = environment[name];
+const text = Joi.string().empty(blank);
 
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`La variable de entorno ${name} es obligatoria.`);
-  }
+const port = Joi.number().integer().min(1).max(65535).empty(blank).messages({
+  'number.base': 'La variable {{#label}} debe ser un puerto válido',
+  'number.integer': 'La variable {{#label}} debe ser un puerto válido',
+  'number.min': 'La variable {{#label}} debe ser un puerto válido',
+  'number.max': 'La variable {{#label}} debe ser un puerto válido',
+});
 
-  return value;
-}
+const jwtSecret = text
+  .required()
+  .when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().min(MIN_SECRET_LENGTH_IN_PRODUCTION),
+  })
+  .messages({
+    'string.min':
+      'En producción {{#label}} debe tener al menos {{#limit}} caracteres',
+  });
 
-function requiredPort(environment: Environment, name: string): void {
-  const port = Number(requiredString(environment, name));
-
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`La variable ${name} debe ser un puerto válido.`);
-  }
-}
-
-function requiredJwtSecret(environment: Environment): void {
-  const secret = requiredString(environment, 'JWT_SECRET');
-
-  if (
-    isProduction(environment) &&
-    secret.length < MIN_SECRET_LENGTH_IN_PRODUCTION
-  ) {
-    throw new Error(
-      `En producción JWT_SECRET debe tener al menos ${MIN_SECRET_LENGTH_IN_PRODUCTION} caracteres.`,
-    );
-  }
-}
+const phoneEncryptionKey = text
+  .required()
+  .custom((value: string, helpers) =>
+    Buffer.from(value, 'base64').length === PHONE_KEY_BYTES
+      ? value
+      : helpers.error('any.invalid'),
+  )
+  .messages({
+    'any.invalid': `{{#label}} debe ser una clave base64 de ${PHONE_KEY_BYTES} bytes`,
+  });
 
 /** En desarrollo tienen un valor por defecto; en producción un olvido no debe pasar inadvertido. */
-function requiredInProduction(environment: Environment, names: string[]): void {
-  if (isProduction(environment)) {
-    names.forEach((name) => requiredString(environment, name));
-  }
-}
+const requiredInProduction = (schema: Joi.Schema) =>
+  schema.when('NODE_ENV', { is: 'production', then: Joi.required() });
+
+const environmentSchema = (keys: Joi.SchemaMap) =>
+  Joi.object(keys)
+    .messages({
+      'any.required': 'La variable de entorno {{#label}} es obligatoria',
+    })
+    // Sin comillas alrededor del nombre de la variable en los mensajes.
+    .prefs({ errors: { wrap: { label: false } } });
 
 // Cada servicio exige solo lo que usa: el gateway no necesita la clave de los
 // teléfonos ni el market los secretos de autenticación.
-export function validateGatewayEnvironment(
-  environment: Environment,
-): Environment {
-  requiredJwtSecret(environment);
-  requiredPort(environment, 'PORT');
-  requiredPort(environment, 'USER_SERVICE_PORT');
-  requiredInProduction(environment, ['MARKET_SERVICE_PORT', 'CORS_ORIGINS']);
-  return environment;
-}
+export const gatewayEnvironmentSchema = environmentSchema({
+  JWT_SECRET: jwtSecret,
+  PORT: port.required(),
+  USER_SERVICE_PORT: port.required(),
+  MARKET_SERVICE_PORT: requiredInProduction(port),
+  CORS_ORIGINS: requiredInProduction(text),
+});
 
-export function validateUserServiceEnvironment(
-  environment: Environment,
-): Environment {
-  requiredJwtSecret(environment);
-  requiredString(environment, 'MONGO_URI_USERS');
-  requiredPort(environment, 'PORT_USER_SERVICE_TCP');
+export const userServiceEnvironmentSchema = environmentSchema({
+  JWT_SECRET: jwtSecret,
+  MONGO_URI_USERS: text.required(),
+  PORT_USER_SERVICE_TCP: port.required(),
+  PHONE_ENCRYPTION_KEY: phoneEncryptionKey,
+});
 
-  const encryptionKey = Buffer.from(
-    requiredString(environment, 'PHONE_ENCRYPTION_KEY'),
-    'base64',
-  );
-
-  if (encryptionKey.length !== 32) {
-    throw new Error(
-      'PHONE_ENCRYPTION_KEY debe ser una clave base64 de 32 bytes.',
-    );
-  }
-
-  return environment;
-}
-
-export function validateMarketEnvironment(
-  environment: Environment,
-): Environment {
-  requiredInProduction(environment, [
-    'MONGO_URI_MARKET',
-    'PORT_MARKET_SERVICE_TCP',
-  ]);
-  return environment;
-}
+export const marketEnvironmentSchema = environmentSchema({
+  MONGO_URI_MARKET: requiredInProduction(text),
+  PORT_MARKET_SERVICE_TCP: requiredInProduction(port),
+});

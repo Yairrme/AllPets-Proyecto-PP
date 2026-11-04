@@ -12,7 +12,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { UserSessionService } from './auth/user-session.service';
 import { UserClient } from './user.client';
-import { validateGatewayEnvironment } from 'y/common';
+import { gatewayEnvironmentSchema } from 'y/common';
 import { HealthController } from './health.controller';
 import { PublicCaregiversController } from './public-caregivers.controller';
 import { AdminCaregiversController } from './admin-caregivers.controller';
@@ -38,7 +38,7 @@ function connectToRedis(url: string): Redis {
     // Variables de entorno para Gateway
     ConfigModule.forRoot({
       isGlobal: true,
-      validate: validateGatewayEnvironment,
+      validationSchema: gatewayEnvironmentSchema,
     }),
     JwtModule.register({}),
     // Límite global por IP. Las rutas sensibles (login, registro, subidas)

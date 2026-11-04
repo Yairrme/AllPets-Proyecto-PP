@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  PartialType,
+  PickType,
+} from '@nestjs/swagger';
 import {
   IsInt,
   IsMongoId,
@@ -6,6 +11,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -43,5 +49,17 @@ export class CreateReviewDto {
   })
   @IsString()
   @IsOptional()
+  @MaxLength(500, { message: 'El comentario no puede superar 500 caracteres.' })
   comment?: string;
+}
+
+/** Edición de la propia reseña: las mismas reglas de calificación y comentario. */
+export class UpdateReviewDto extends PartialType(
+  PickType(CreateReviewDto, ['score', 'comment'] as const),
+) {}
+
+export class ReviewIdParamDto {
+  @ApiProperty({ example: '65f1a2b3c4d5e6f7a8b9c0d1' })
+  @IsMongoId({ message: 'El ID de la reseña no es válido.' })
+  reviewId: string;
 }

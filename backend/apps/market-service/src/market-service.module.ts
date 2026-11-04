@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { validateMarketEnvironment } from 'y/common';
+import { marketEnvironmentSchema } from 'y/common';
 import { CartModule } from './cart/cart.module';
 import { MarketServiceController } from './market-service.controller';
 import { ProductsModule } from './products/products.module';
@@ -10,7 +10,7 @@ import { ProductsModule } from './products/products.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      validate: validateMarketEnvironment,
+      validationSchema: marketEnvironmentSchema,
     }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],

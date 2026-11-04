@@ -25,6 +25,7 @@ import {
   ProfileStatus,
   RegisterDto,
   UpdateCaregiverProfileDto,
+  UpdateReviewDto,
   UpdateUserDto,
   UserRole,
 } from 'y/contracts';
@@ -715,6 +716,81 @@ export class CoreUserService {
     await this.updateCaregiverAverageRating(caregiver_id);
 
     return savedReview;
+  }
+
+  /** La reseña de este cliente para el prestador, si dejó una. */
+  async getMyReview(
+    caregiverId: string,
+    reviewerId: string,
+  ): Promise<{ review: Review | null }> {
+    if (
+      !Types.ObjectId.isValid(caregiverId) ||
+      !Types.ObjectId.isValid(reviewerId)
+    ) {
+      throw new NotFoundException('ID de cuidador no válido');
+    }
+    const review = await this.reviewModel
+      .findOne({
+        caregiver_id: new Types.ObjectId(caregiverId),
+        reviewer_id: new Types.ObjectId(reviewerId),
+      })
+      .exec();
+    return { review };
+  }
+
+  /**
+   * Solo el autor puede editarla: el filtro incluye reviewer_id. Una reseña ajena
+   * responde igual que una inexistente, para no revelar cuáles existen.
+   */
+  async updateReview(
+    reviewId: string,
+    reviewerId: string,
+    { score, comment }: UpdateReviewDto,
+  ): Promise<Review> {
+    const changes = Object.fromEntries(
+      Object.entries({ score, comment }).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
+    const review = await this.reviewModel
+      .findOneAndUpdate(
+        this.ownReviewFilter(reviewId, reviewerId),
+        { $set: changes },
+        { returnDocument: 'after', runValidators: true },
+      )
+      .exec();
+    if (!review) {
+      throw new NotFoundException('Reseña no encontrada');
+    }
+    await this.updateCaregiverAverageRating(String(review.caregiver_id));
+    return review;
+  }
+
+  async deleteReview(
+    reviewId: string,
+    reviewerId: string,
+  ): Promise<{ message: string; review_id: string }> {
+    const review = await this.reviewModel
+      .findOneAndDelete(this.ownReviewFilter(reviewId, reviewerId))
+      .exec();
+    if (!review) {
+      throw new NotFoundException('Reseña no encontrada');
+    }
+    await this.updateCaregiverAverageRating(String(review.caregiver_id));
+    return { message: 'Reseña eliminada correctamente.', review_id: reviewId };
+  }
+
+  private ownReviewFilter(reviewId: string, reviewerId: string) {
+    if (
+      !Types.ObjectId.isValid(reviewId) ||
+      !Types.ObjectId.isValid(reviewerId)
+    ) {
+      throw new NotFoundException('Reseña no encontrada');
+    }
+    return {
+      _id: new Types.ObjectId(reviewId),
+      reviewer_id: new Types.ObjectId(reviewerId),
+    };
   }
 
   async getReviewsForCaregiver(

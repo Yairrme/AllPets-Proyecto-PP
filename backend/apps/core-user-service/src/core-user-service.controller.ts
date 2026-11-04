@@ -13,6 +13,7 @@ import {
   PaginationDto,
   ProfileStatus,
   UpdateCaregiverProfileDto,
+  UpdateReviewDto,
   UpdateUserDto,
 } from 'y/contracts';
 
@@ -159,6 +160,39 @@ export class CoreUserServiceController {
   @MessagePattern({ cmd: 'create_review' })
   async createReview(@Payload() createReviewDto: CreateReviewDto) {
     return this.coreUserService.createReview(createReviewDto);
+  }
+
+  @MessagePattern({ cmd: 'get_my_review' })
+  async getMyReview(
+    @Payload() data: { caregiver_id: string; reviewer_id: string },
+  ) {
+    return this.coreUserService.getMyReview(
+      data.caregiver_id,
+      data.reviewer_id,
+    );
+  }
+
+  @MessagePattern({ cmd: 'update_review' })
+  async updateReview(
+    @Payload()
+    data: {
+      review_id: string;
+      reviewer_id: string;
+      changes: UpdateReviewDto;
+    },
+  ) {
+    return this.coreUserService.updateReview(
+      data.review_id,
+      data.reviewer_id,
+      data.changes,
+    );
+  }
+
+  @MessagePattern({ cmd: 'delete_review' })
+  async deleteReview(
+    @Payload() data: { review_id: string; reviewer_id: string },
+  ) {
+    return this.coreUserService.deleteReview(data.review_id, data.reviewer_id);
   }
 
   @MessagePattern({ cmd: 'get_reviews_for_caregiver' })

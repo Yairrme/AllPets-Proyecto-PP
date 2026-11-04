@@ -287,6 +287,80 @@ describe('CoreUserService.deleteUser', () => {
   });
 });
 
+describe('CoreUserService: edición de la propia reseña', () => {
+  const reviewId = new Types.ObjectId().toString();
+  const authorId = new Types.ObjectId().toString();
+  const caregiverId = new Types.ObjectId();
+
+  /** El promedio sale de la base: 2 reseñas de 4 y 2 estrellas. */
+  function setup(found: object | null) {
+    const updateOne = jest.fn(() => query({}));
+    const findOneAndUpdate = jest.fn(() => query(found));
+    const findOneAndDelete = jest.fn(() => query(found));
+    const models = {
+      review: {
+        findOneAndUpdate,
+        findOneAndDelete,
+        aggregate: () => query([{ avg: 3, total: 2 }]),
+      },
+      profile: { updateOne },
+    };
+    return { models, updateOne, findOneAndUpdate, findOneAndDelete };
+  }
+
+  it('solo busca entre las reseñas del autor', async () => {
+    const { models, findOneAndUpdate } = setup({ caregiver_id: caregiverId });
+    const service = await createService(models);
+    await service.updateReview(reviewId, authorId, { score: 2 });
+
+    expect(findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        _id: new Types.ObjectId(reviewId),
+        reviewer_id: new Types.ObjectId(authorId),
+      },
+      { $set: { score: 2 } },
+      expect.objectContaining({ runValidators: true }),
+    );
+  });
+
+  it('editar recalcula el promedio del prestador', async () => {
+    const { models, updateOne } = setup({ caregiver_id: caregiverId });
+    const service = await createService(models);
+    await service.updateReview(reviewId, authorId, { score: 2 });
+    expect(updateOne).toHaveBeenCalledWith(
+      { user_id: caregiverId },
+      { $set: { rating_avg: 3, total_reviews: 2 } },
+    );
+  });
+
+  it('eliminar recalcula el promedio del prestador', async () => {
+    const { models, updateOne } = setup({ caregiver_id: caregiverId });
+    const service = await createService(models);
+    await service.deleteReview(reviewId, authorId);
+    expect(updateOne).toHaveBeenCalled();
+  });
+
+  it('una reseña ajena o inexistente responde 404 y no recalcula', async () => {
+    const { models, updateOne } = setup(null);
+    const service = await createService(models);
+    await expect(
+      service.updateReview(reviewId, authorId, { score: 2 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.deleteReview(reviewId, authorId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+
+  it('un ID mal formado responde 404, no un error de la base', async () => {
+    const { models } = setup(null);
+    const service = await createService(models);
+    await expect(
+      service.deleteReview('no-es-un-id', authorId),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('CoreUserService.addCaregiverFiles', () => {
   const userId = new Types.ObjectId().toString();
 
