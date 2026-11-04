@@ -183,14 +183,37 @@ export const useProfileStore = defineStore('profile', {
       }
     },
 
-    async createReview(review: { reviewer_id: string; caregiver_id: string; score: number; comment?: string }) {
+    async fetchMyReview(caregiverId: string) {
+      const response = await axios.get(`${API_URL}/reviews/caregiver/${caregiverId}/mine`)
+      return response.data?.review ?? null
+    },
+
+    // El autor sale del token en el backend: no se envía.
+    async createReview(review: { caregiver_id: string; score: number; comment?: string }) {
       try {
         const response = await axios.post(`${API_URL}/reviews`, review)
-        this.reviews.unshift(response.data)
         return response.data
       } catch (error: any) {
         throw new Error(getApiErrorMessage(error, 'Error al guardar la reseña'), { cause: error })
       }
-    }
+    },
+
+    async updateReview(reviewId: string, changes: { score: number; comment: string }) {
+      try {
+        const response = await axios.patch(`${API_URL}/reviews/${reviewId}`, changes)
+        return response.data
+      } catch (error: any) {
+        throw new Error(getApiErrorMessage(error, 'Error al guardar la reseña'), { cause: error })
+      }
+    },
+
+    async deleteReview(reviewId: string) {
+      try {
+        await axios.delete(`${API_URL}/reviews/${reviewId}`)
+        this.reviews = this.reviews.filter((review) => review._id !== reviewId)
+      } catch (error: any) {
+        throw new Error(getApiErrorMessage(error, 'Error al eliminar la reseña'), { cause: error })
+      }
+    },
   }
 })

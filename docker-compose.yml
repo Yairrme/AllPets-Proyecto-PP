@@ -6,7 +6,8 @@ services:
     restart: always
     ports:
       # Solo desde esta máquina: la base no tiene contraseña configurada.
-      - "127.0.0.1:27017:27017"
+      # MONGO_HOST_PORT (en el .env de la raíz) evita el choque con un MongoDB local.
+      - "127.0.0.1:${MONGO_HOST_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
     environment:
@@ -73,9 +74,9 @@ services:
       - MARKET_SERVICE_HOST=market-service
       - MARKET_SERVICE_PORT=3002
       - REDIS_URL=redis://redis:6379
-      - CORS_ORIGINS=http://localhost:8080
+      - CORS_ORIGINS=http://localhost:${FRONTEND_HOST_PORT:-8080}
     ports:
-      - "3000:3000"
+      - "${GATEWAY_HOST_PORT:-3000}:3000"
     volumes:
       - uploads_data:/app/uploads
       - private_uploads_data:/app/private-uploads
@@ -99,10 +100,10 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://localhost:3000
+        VITE_API_URL: http://localhost:${GATEWAY_HOST_PORT:-3000}
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${FRONTEND_HOST_PORT:-8080}:80"
     depends_on:
       - api-gateway
 

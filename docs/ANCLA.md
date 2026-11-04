@@ -100,7 +100,7 @@ Fuente: *Modelo de datos* (diagrama), *Esquema de Base de Datos: Core User Servi
 | `bio` | String | default `""` |
 | `services` | String[] | default `[]` |
 | `availability` | String[] | default `[]` |
-| `rating_avg` | Number | default `0`, se recalcula con cada reseña y al eliminar a quien la escribió |
+| `rating_avg` | Number | default `0`, se recalcula al crear, editar o eliminar una reseña y al eliminar a quien la escribió |
 | `total_reviews` | Number | default `0` |
 | `hourly_rate`, `experience_years`, `accepted_sizes`, `certifications`, `profile_image` | — | extensiones (ver [desvíos](#5-desvíos-aceptados-respecto-del-pdf)) |
 | `gallery_images` | String[] | rutas `/uploads/...`, máximo 20; se agregan y quitan solo con sus endpoints |
@@ -189,7 +189,10 @@ Documentación interactiva: `http://localhost:3000/api/docs` (Swagger / OpenAPI 
 ### Reseñas
 | Método | Ruta | Acceso | Body |
 |---|---|---|---|
-| POST | `/reviews` | rol `client` | `caregiver_id`, `score` (entero 1–5), `comment` |
+| POST | `/reviews` | rol `client` | `caregiver_id`, `score` (entero 1–5), `comment` (hasta 500 caracteres) |
+| PATCH | `/reviews/:reviewId` | rol `client`, solo el autor (404 si no es suya) | `score`, `comment` |
+| DELETE | `/reviews/:reviewId` | rol `client`, solo el autor (404 si no es suya) | — |
+| GET | `/reviews/caregiver/:caregiverId/mine` | rol `client` | — → `{ review }` o `{ review: null }` |
 | GET | `/reviews/caregiver/:caregiverId` | 🔑 | — |
 
 ### Administración de prestadores
@@ -254,7 +257,7 @@ Diferencias conocidas. Cada una está decidida; si alguna deja de valer, se corr
 | RF08 | Buscar prestadores por ubicación o zona | 🟡 | Filtro por ciudad (Cipolletti / Neuquén) en la API; la búsqueda geoespacial depende del Booking Service ⏸ |
 | RF09 | Consultar perfil del prestador | ✅ | `GET /caregivers/:userId/profile`, modal de perfil en `PaseadoresView.vue` |
 | RF10 | Estado del servicio | ❌ | Depende de reservas (Booking Service ⏸) |
-| RF11 | Valoraciones y reseñas | 🟡 | Reseñas a prestadores ✅; reseñas de productos ❌ |
+| RF11 | Valoraciones y reseñas | 🟡 | Reseñas a prestadores ✅ (su autor puede editarlas y eliminarlas); reseñas de productos ❌ |
 | RF12 | Notificaciones | ❌ | Nodemailer no está instalado |
 
 > Nota sobre el PDF: las descripciones de RF09 ("Geolocalización en tiempo real") y RF10
@@ -272,6 +275,8 @@ Diferencias conocidas. Cada una está decidida; si alguna deja de valer, se corr
 | HTTPS | ❌ | Corresponde al despliegue (proxy inverso); en desarrollo es HTTP |
 | Swagger / OpenAPI 3 | ✅ | `/api/docs`; en producción deshabilitado o protegido con usuario y contraseña |
 | Multer en `/uploads` | ✅ | Solo JPG/PNG/WEBP, 5 MB, nombre aleatorio. Los comprobantes van a `private-uploads/`, que no se sirve como estático |
+| Validación del entorno | ✅ | Esquemas de **Joi** por servicio (`libs/common/src/config/env.validation.ts`), conectados con `validationSchema` de `ConfigModule`. Si falta o es inválida una variable, el servicio no arranca |
+| Validación de peticiones | ✅ | `ValidationPipe` con DTOs de `class-validator` en `libs/contracts` |
 | MongoDB + Mongoose | ✅ | |
 | Nodemailer | ❌ | Ver RF12 |
 | Responsive con Tailwind | ✅ | Tailwind CSS 4 |

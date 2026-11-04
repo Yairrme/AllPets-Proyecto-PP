@@ -11,6 +11,7 @@ import { scrollToSection } from '../utils/scroll'
 import { onAvatarError } from '../utils/paseador'
 
 import PaseadorCard from '../components/paseadores/PaseadorCard.vue'
+import PaseadorResenas from '../components/paseadores/PaseadorResenas.vue'
 import PaseadoresFilter from '../components/paseadores/PaseadoresFilter.vue'
 import PaseadoresHero from '../components/paseadores/PaseadoresHero.vue'
 import dogLeashImg from '../assets/dog-leash.jpg'
@@ -66,11 +67,6 @@ const selectedPaseador = ref<Paseador | null>(null)
 const isPerfilModalOpen = ref(false)
 const perfilPaseador = ref<Paseador | null>(null)
 const selectedGalleryImage = ref<string | null>(null)
-const reviewScore = ref(5)
-const reviewComment = ref('')
-const reviewError = ref('')
-const reviewSuccess = ref('')
-const isSavingReview = ref(false)
 
 const { contactar, contactError } = useContactarPaseador()
 // null: sin sesión o todavía cargando · '': no disponible
@@ -97,38 +93,13 @@ function handleVerPerfil(paseador: Paseador) {
   selectedGalleryImage.value = null
   isPerfilModalOpen.value = true
   cargarTelefonoPerfil(paseador)
-  reviewError.value = ''
-  reviewSuccess.value = ''
-  profileStore.fetchReviews(paseador.id).catch(() => {
-    reviewError.value = 'No se pudieron cargar las reseñas.'
-  })
 }
 
-async function handleCreateReview() {
-  if (!authStore.user || authStore.user.role !== 'client' || !perfilPaseador.value) return
-
-  reviewError.value = ''
-  reviewSuccess.value = ''
-  isSavingReview.value = true
-  try {
-    await profileStore.createReview({
-      reviewer_id: authStore.user._id || authStore.user.id,
-      caregiver_id: perfilPaseador.value.id,
-      score: reviewScore.value,
-      comment: reviewComment.value.trim(),
-    })
-    reviewComment.value = ''
-    reviewScore.value = 5
-    reviewSuccess.value = 'Tu reseña fue guardada correctamente.'
-    const updated = await store.fetchPaseador(perfilPaseador.value.id)
-    if (updated) {
-      perfilPaseador.value = updated
-    }
-  } catch (error: any) {
-    reviewError.value = error.message || 'No se pudo guardar la reseña.'
-  } finally {
-    isSavingReview.value = false
-  }
+/** Una reseña nueva, editada o eliminada cambia el promedio que se muestra. */
+async function actualizarPerfilAbierto() {
+  if (!perfilPaseador.value) return
+  const updated = await store.fetchPaseador(perfilPaseador.value.id)
+  if (updated) perfilPaseador.value = updated
 }
 </script>
 
@@ -486,50 +457,11 @@ async function handleCreateReview() {
             </div>
 
             <!-- Reseñas -->
-            <div class="border-t border-(--color-line) pt-6">
-              <h4 class="wp-label mb-3">Reseñas de clientes</h4>
-
-              <div v-if="profileStore.reviews.length" class="space-y-3 mb-5">
-                <div
-                  v-for="review in profileStore.reviews"
-                  :key="review._id"
-                  class="rounded-xl bg-(--color-paper) p-4 border border-(--color-line)"
-                >
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="font-medium text-sm">{{ review.reviewer_id?.name || 'Cliente' }}</span>
-                    <span class="flex gap-0.5">
-                      <svg v-for="n in 5" :key="n" width="12" height="12" viewBox="0 0 24 24"
-                        :fill="n <= review.score ? '#C99A46' : 'none'"
-                        :stroke="n <= review.score ? '#C99A46' : '#1E2B22'" stroke-opacity="0.3" stroke-width="1.5">
-                        <path d="M12 2l2.9 6.26 6.9.6-5.2 4.6 1.6 6.76L12 16.9l-6.2 3.32 1.6-6.76-5.2-4.6 6.9-.6z"/>
-                      </svg>
-                    </span>
-                  </div>
-                  <p v-if="review.comment" class="text-sm text-(--color-ink)/70 mt-2">{{ review.comment }}</p>
-                </div>
-              </div>
-              <p v-else class="text-sm text-(--color-ink)/55 mb-5">Todavía no hay reseñas para este perfil.</p>
-
-              <form v-if="authStore.user?.role === 'client'" class="rounded-xl border border-(--color-line) p-4" @submit.prevent="handleCreateReview">
-                <p class="font-medium text-sm mb-3">Dejá tu reseña</p>
-                <div class="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
-                  <select v-model.number="reviewScore" class="wp-input">
-                    <option :value="5">5 estrellas</option>
-                    <option :value="4">4 estrellas</option>
-                    <option :value="3">3 estrellas</option>
-                    <option :value="2">2 estrellas</option>
-                    <option :value="1">1 estrella</option>
-                  </select>
-                  <input v-model="reviewComment" type="text" maxlength="500" class="wp-input" placeholder="Escribí un comentario (opcional)" />
-                </div>
-                <button type="submit" :disabled="isSavingReview" class="wp-btn-primary mt-3 disabled:opacity-50">
-                  {{ isSavingReview ? 'Guardando...' : 'Publicar reseña' }}
-                </button>
-                <p v-if="reviewSuccess" class="mt-2 text-sm text-(--color-forest)">{{ reviewSuccess }}</p>
-                <p v-if="reviewError" class="mt-2 text-sm text-(--color-clay)">{{ reviewError }}</p>
-              </form>
-              <p v-else class="text-xs text-(--color-ink)/50">Iniciá sesión como cliente para dejar una reseña.</p>
-            </div>
+            <PaseadorResenas
+              :key="perfilPaseador.id"
+              :caregiver-id="perfilPaseador.id"
+              @changed="actualizarPerfilAbierto"
+            />
           </div>
 
           <!-- Footer -->

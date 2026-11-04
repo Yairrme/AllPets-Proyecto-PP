@@ -56,6 +56,15 @@ npm run dev                 # http://localhost:5173
 - Documentación interactiva de la API: <http://localhost:3000/api/docs>
 - Estado de los servicios: <http://localhost:3000/health>
 
+### Todo en contenedores
+
+```bash
+cp backend/.env.example backend/.env   # JWT_SECRET de 32 caracteres o más y PHONE_ENCRYPTION_KEY
+docker compose --profile app up -d --build
+```
+
+Frontend en <http://localhost:8080> y API en <http://localhost:3000>. Si esos puertos o el 27017 están ocupados, cámbialos en un `.env` en la raíz (ver [.env.example](.env.example)). Los contenedores corren en modo producción: Swagger queda deshabilitado.
+
 Más detalle en [backend/README.md](backend/README.md) y [frontend/README.md](frontend/README.md).
 
 ## Funcionalidades actuales
