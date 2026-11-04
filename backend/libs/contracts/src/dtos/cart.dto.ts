@@ -27,6 +27,10 @@ export class UpdateCartItemDto {
 }
 
 export class CartItemParamDto {
+  @ApiProperty({
+    example: '64b7f0c2a1d3e4f5a6b7c8da',
+    description: 'ID del producto',
+  })
   @IsMongoId()
   productId: string;
 }

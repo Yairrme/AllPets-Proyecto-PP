@@ -37,6 +37,8 @@ import {
   ApiParam,
   ApiConsumes,
   ApiBody,
+  ApiForbiddenResponse,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
@@ -50,6 +52,10 @@ const UPLOAD_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
+@ApiUnauthorizedResponse({ description: 'Token ausente, inválido o vencido' })
+@ApiForbiddenResponse({
+  description: 'No tenés el rol requerido o no sos el dueño del recurso',
+})
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UserController {
@@ -177,7 +183,10 @@ export class UserController {
 
   @Put('users/:userId/caregiver-profile')
   @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Actualizar perfil de cuidador/paseador' })
+  @ApiOperation({
+    summary:
+      'Actualizar perfil de cuidador/paseador (Walker, Caregiver o Admin)',
+  })
   @ApiParam({ name: 'userId', description: 'ID del cuidador a actualizar' })
   @ApiResponse({ status: 200, description: 'Perfil actualizado exitosamente' })
   @ApiResponse({
@@ -251,7 +260,10 @@ export class UserController {
 
   @Post('users/:userId/caregiver-profile/image')
   @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Subir foto de perfil profesional de cuidador' })
+  @ApiOperation({
+    summary:
+      'Subir foto de perfil profesional de cuidador (Walker, Caregiver o Admin)',
+  })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -294,7 +306,10 @@ export class UserController {
 
   @Post('users/:userId/caregiver-profile/gallery')
   @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Subir imágenes a la galería (hasta 10 fotos)' })
+  @ApiOperation({
+    summary:
+      'Subir imágenes a la galería, hasta 10 fotos (Walker, Caregiver o Admin)',
+  })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -360,7 +375,7 @@ export class UserController {
   @Roles(UserRole.WALKER, UserRole.CAREGIVER, UserRole.ADMIN)
   @ApiOperation({
     summary:
-      'Subir comprobantes de certificaciones o permisos municipales (hasta 10 archivos)',
+      'Subir comprobantes de certificaciones o permisos municipales, hasta 10 archivos (Walker, Caregiver o Admin)',
   })
   @ApiParam({ name: 'userId', description: 'ID del cuidador' })
   @ApiConsumes('multipart/form-data')

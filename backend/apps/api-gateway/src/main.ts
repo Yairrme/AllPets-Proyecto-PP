@@ -73,20 +73,24 @@ function setupSwagger(app: NestExpressApplication) {
   const config = new DocumentBuilder()
     .setTitle('All Pets API Gateway')
     .setDescription(
-      'Documentación interactiva de la API y Microservicios de All Pets (Autenticación, Usuarios, Cuidadores, Reseñas).',
+      'Documentación interactiva de la API y Microservicios de All Pets (Autenticación, Usuarios, Cuidadores, Reseñas, Tienda, Carrito y Administración).',
     )
     .setVersion('1.0.0')
-    .addTag('Auth', 'Registro, login y autenticación')
+    .addTag('Auth', 'Registro (con aceptación de políticas) y login')
     .addTag(
-      'Caregivers (Público)',
-      'Búsqueda y consulta de cuidadores y paseadores',
+      'Caregivers',
+      'Búsqueda y consulta pública de cuidadores y paseadores',
     )
-    .addTag('Users', 'Gestión de usuarios y perfiles')
     .addTag(
-      'Caregiver Profile',
-      'Gestión de perfil profesional, tarifas y fotos',
+      'Users',
+      'Usuarios, perfil profesional de cuidadores, subida de archivos y reseñas',
     )
-    .addTag('Reviews', 'Calificaciones y comentarios a cuidadores')
+    .addTag('Products', 'Catálogo público y gestión de productos (admin)')
+    .addTag('Cart', 'Carrito de compras del usuario autenticado')
+    .addTag(
+      'Admin - Caregivers',
+      'Administración de paseadores y cuidadores (solo ADMIN)',
+    )
     .addTag('Health', 'Estado de salud del Gateway y Microservicios')
     .addBearerAuth(
       {

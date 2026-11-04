@@ -37,6 +37,8 @@ import { RolesGuard } from './auth/roles.guard';
  */
 @ApiTags('Admin - Caregivers')
 @ApiBearerAuth('JWT-auth')
+@ApiResponse({ status: 401, description: 'Token ausente, inválido o vencido' })
+@ApiResponse({ status: 403, description: 'Requiere rol ADMIN' })
 @Controller('admin/caregivers')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -48,9 +50,10 @@ export class AdminCaregiversController {
   @Get()
   @ApiOperation({
     summary: 'Listar paseadores y cuidadores con su estado (Solo Admin)',
+    description: 'Requiere rol ADMIN. Admite filtro por estado y paginación.',
   })
   @ApiResponse({ status: 200, description: 'Listado paginado' })
-  @ApiResponse({ status: 403, description: 'Requiere rol ADMIN' })
+  @ApiResponse({ status: 400, description: 'Parámetros de consulta inválidos' })
   list(@Query() query: AdminCaregiversQueryDto) {
     return this.send(
       'admin_get_caregivers',
@@ -60,8 +63,11 @@ export class AdminCaregiversController {
   }
 
   @Get(':userId')
-  @ApiOperation({ summary: 'Ver usuario y perfil de un paseador/cuidador' })
+  @ApiOperation({
+    summary: 'Ver usuario y perfil de un paseador/cuidador (Solo Admin)',
+  })
   @ApiResponse({ status: 200, description: 'Usuario y perfil' })
+  @ApiResponse({ status: 400, description: 'ID con formato inválido' })
   @ApiResponse({ status: 404, description: 'No encontrado' })
   getOne(@Param() { userId }: CaregiverUserIdParamDto) {
     return this.send(
@@ -72,8 +78,11 @@ export class AdminCaregiversController {
   }
 
   @Patch(':userId/status')
-  @ApiOperation({ summary: 'Aprobar, rechazar o poner en pendiente un perfil' })
+  @ApiOperation({
+    summary: 'Aprobar, rechazar o poner en pendiente un perfil (Solo Admin)',
+  })
   @ApiResponse({ status: 200, description: 'Perfil actualizado' })
+  @ApiResponse({ status: 400, description: 'ID o estado inválidos' })
   @ApiResponse({ status: 404, description: 'No encontrado' })
   setStatus(
     @Param() { userId }: CaregiverUserIdParamDto,

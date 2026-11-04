@@ -28,7 +28,8 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o email ya en uso',
+    description:
+      'Datos inválidos, políticas de privacidad no aceptadas (acceptedPrivacyPolicy debe ser true) o email ya en uso',
   })
   @ApiResponse({
     status: 429,
