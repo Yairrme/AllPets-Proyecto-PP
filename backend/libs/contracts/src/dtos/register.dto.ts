@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  Equals,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsNotEmpty,
@@ -17,6 +19,9 @@ export const REGISTRABLE_ROLES = [
   UserRole.WALKER,
   UserRole.CAREGIVER,
 ];
+
+const PRIVACY_POLICY_MESSAGE =
+  'Debes aceptar las políticas de privacidad para registrarte.';
 
 export class RegisterDto {
   @ApiProperty({
@@ -87,4 +92,13 @@ export class RegisterDto {
   })
   @IsNotEmpty({ message: 'El rol es obligatorio.' })
   role: UserRole;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Aceptación de las políticas de privacidad. Debe ser true para poder registrarse.',
+  })
+  @IsBoolean({ message: PRIVACY_POLICY_MESSAGE })
+  @Equals(true, { message: PRIVACY_POLICY_MESSAGE })
+  acceptedPrivacyPolicy: boolean;
 }

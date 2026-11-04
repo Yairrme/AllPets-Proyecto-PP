@@ -18,8 +18,9 @@ async function runTests() {
         password: 'password123',
         role: 'walker', // probamos registrar un paseador
         city: 'Cipolletti',
-        phone: '2991234567'
-      })
+        phone: '2991234567',
+        acceptedPrivacyPolicy: true,
+      }),
     });
     const regData = await regRes.json();
     if (!regRes.ok) throw new Error(JSON.stringify(regData));
@@ -32,8 +33,8 @@ async function runTests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: testEmail,
-        password: 'password123'
-      })
+        password: 'password123',
+      }),
     });
     const loginData = await loginRes.json();
     if (!loginRes.ok) throw new Error(JSON.stringify(loginData));
@@ -44,17 +45,20 @@ async function runTests() {
 
     // 3. Modificar perfil
     console.log('\n[3] Probando actualización de perfil...');
-    const updateRes = await fetch(`${API_URL}/users/${userId}/caregiver-profile`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+    const updateRes = await fetch(
+      `${API_URL}/users/${userId}/caregiver-profile`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          bio: 'Paseador con 5 años de experiencia',
+          services: ['Paseo 1 hr', 'Guardería'],
+        }),
       },
-      body: JSON.stringify({
-        bio: 'Paseador con 5 años de experiencia',
-        services: ['Paseo 1 hr', 'Guardería']
-      })
-    });
+    );
     const updateData = await updateRes.json();
     if (!updateRes.ok) throw new Error(JSON.stringify(updateData));
     console.log('Perfil actualizado:', updateData);
@@ -63,15 +67,14 @@ async function runTests() {
     console.log('\n[4] Probando obtención de perfil...');
     const getRes = await fetch(`${API_URL}/users/${userId}/caregiver-profile`, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
     const getData = await getRes.json();
     if (!getRes.ok) throw new Error(JSON.stringify(getData));
     console.log('Perfil obtenido:', getData);
 
     console.log('\n--- Todas las pruebas pasaron correctamente ---');
-
   } catch (error) {
     console.error('\n!!! Error en las pruebas !!!');
     console.error(error.message);

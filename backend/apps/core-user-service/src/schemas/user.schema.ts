@@ -38,6 +38,14 @@ export class User {
     default: UserRole.CLIENT,
   })
   role: UserRole;
+
+  /** Aceptación de políticas de privacidad (se registra al crear la cuenta) */
+  @Prop({ type: Boolean, default: false })
+  privacy_policy_accepted: boolean;
+
+  /** Fecha y hora (generada en el servidor) en que se aceptaron las políticas */
+  @Prop({ type: Date, default: null })
+  privacy_policy_accepted_at: Date | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

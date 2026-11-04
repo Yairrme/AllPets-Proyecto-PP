@@ -4,6 +4,7 @@ import {
   ConflictException,
   UnauthorizedException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -59,6 +60,13 @@ export class CoreUserService {
       );
     }
 
+    // Defensa en profundidad: la aceptación de políticas se exige también aquí
+    if (registerDto.acceptedPrivacyPolicy !== true) {
+      throw new BadRequestException(
+        'Debes aceptar las políticas de privacidad para registrarte.',
+      );
+    }
+
     // Verificar si el usuario ya existe
     const existingUser = await this.userModel.findOne({ email }).exec();
     if (existingUser) {
@@ -77,6 +85,9 @@ export class CoreUserService {
       city,
       phone: phone ? encryptPhone(phone, this.getPhoneEncryptionKey()) : phone,
       role,
+      privacy_policy_accepted: true,
+      // La fecha la genera el servidor; nunca se toma del cliente
+      privacy_policy_accepted_at: new Date(),
     });
     const savedUser = await createdUser.save();
 
